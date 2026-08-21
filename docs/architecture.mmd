@@ -1,0 +1,42 @@
+---
+config:
+  theme: base
+  themeVariables:
+    primaryColor: "#0f172a"
+    primaryTextColor: "#e2e8f0"
+    primaryBorderColor: "#0063e5"
+    lineColor: "#38bdf8"
+    secondaryColor: "#1e293b"
+    tertiaryColor: "#1e293b"
+    clusterBkg: "#f0f7ff"
+    clusterBorder: "#bfdbfe"
+    edgeLabelBackground: "#e8f0ff"
+    mainBkg: "#0f172a"
+    nodeBorder: "#0063e5"
+    titleColor: "#1e1b4b"
+    fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "13px"
+---
+flowchart TB
+    User([User]) --> HTML["index.html\nApp shell + js-yaml CDN"]
+
+    subgraph App["ES Modules"]
+        HTML --> app["app.js\nEntry point"]
+        app --> state["state.js\nModel, mutations, undo"]
+        app --> render["render.js\nShell, roster, YAML panel, insights"]
+        app --> events["events.js\nClicks, keys, YAML apply"]
+        events --> dnd["dnd.js\nPointer drag, keyboard carry"]
+        render --> diagram["render-diagram.js\nNested boxes"]
+        render --> building["render-building.js\nRooms, doors, corridors"]
+        building --> layout["layout.js\nPacker, bands, straddles"]
+        diagram & building --> parts["parts.js + avatar.js\nSeats, pixel avatars"]
+        render --> alloc["allocation.js\nTotals, FTE, insights"]
+        events --> exportm["export.js + image-export.js\nYAML/JSON/MD/Mermaid/SVG/PNG, #d= link"]
+        events -.lazy.-> visit["visit.js\nWalk the office"]
+        state --> schema["schema.js\nnormalizeDoc, profiles/extends, emit"]
+        schema --> yaml["yaml.js\njs-yaml in/out"]
+        exportm --> markdown["markdown.js\nNotes, outline import/export"]
+    end
+
+    state <-->|"floorplan-v1 (doc tree)"| Storage[("localStorage")]
+    exportm <-->|"#d= / ?src="| URL[("Share link")]

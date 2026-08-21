@@ -1,0 +1,92 @@
+# Revenue Platform: an office map. Rooms carry an explicit layout in grid cells.
+title: Revenue Platform
+mode: building
+notes: |
+  Three squads under one platform, two on-call rotations shared across room
+  walls, and two enablement teams downstairs. Switch to **Diagram** to read the
+  same document as a team chart.
+
+profiles:
+  squad:
+    capacity: 4
+    notes: "Squad: a room with its own backlog and on-call share."
+  oncall:
+    color: "#fb923c"
+    notes: "Rotation pulled from the adjacent rooms. Shares are weekly averages."
+
+people:
+  - { name: Ezra Nakamura, location: USA (Seattle) }
+  - { name: Marcus Bell, location: USA (Denver) }
+  - { name: Jules Okafor, location: Nigeria, notes: "Half on Core, half on Migration until the cutover." }
+  - { name: Amara Diallo, location: Senegal }
+  - { name: Caleb Stone, location: Ireland }
+  - { name: Riya Kapoor, location: India }
+  - { name: Mateus Ferreira, location: Brazil }
+  - { name: Lena Fischer, location: Germany }
+  - { name: Ines Moreau, location: France }
+  - { name: Bakari Otieno, location: Kenya }
+
+groups:
+  - name: Revenue Platform
+    color: "#2dd4bf"
+    groups:
+      - name: Next Gen
+        extends: squad
+        color: "#f472b6"
+        owns: [Billing Core, Entitlements]
+        layout: { x: 0, y: 1, w: 8, h: 6 }
+        groups:
+          - name: Core
+            members: [{ person: ezra-nakamura, pct: 80 }, { person: jules-okafor, pct: 50 }]
+          - name: Migration
+            members: [marcus-bell, { person: jules-okafor, pct: 50 }]
+      - name: Partner Payouts
+        extends: squad
+        color: "#60a5fa"
+        owns: [Payout Ledger]
+        layout: { x: 8, y: 1, w: 8, h: 6 }
+        groups:
+          - name: Intake
+            members: [{ person: amara-diallo, pct: 80 }]
+          - name: Ledger
+            members: [{ person: caleb-stone, pct: 80 }, riya-kapoor]
+      - name: Royalties
+        extends: squad
+        color: "#a78bfa"
+        owns: [Royalty Runs]
+        layout: { x: 16, y: 1, w: 8, h: 6 }
+        members: [{ person: mateus-ferreira, pct: 80 }, lena-fischer]
+  - name: Platform Enablement
+    color: "#fbbf24"
+    owns: [Build Tooling]
+    layout: { x: 0, y: 10, w: 11, h: 4 }
+    members: [ines-moreau]
+  - name: Data and Reporting
+    color: "#34d399"
+    owns: [Warehouse, Dashboards]
+    layout: { x: 12, y: 10, w: 10, h: 4 }
+    members: [bakari-otieno]
+  - name: Contracts and Availability
+    color: "#94a3b8"
+    layout: { x: 22, y: 10, w: 2, h: 4 }
+
+bands:
+  - name: On-call West
+    extends: oncall
+    spans: [next-gen, intake]
+    layout: { x: 0, y: 7, w: 12, h: 2 }
+    members: [{ person: ezra-nakamura, pct: 20 }, { person: amara-diallo, pct: 20 }]
+  - name: On-call East
+    extends: oncall
+    spans: [ledger, royalties]
+    layout: { x: 12, y: 7, w: 12, h: 2 }
+    members: [{ person: caleb-stone, pct: 20 }, { person: mateus-ferreira, pct: 20 }, { person: riya-kapoor, pct: 30 }]
+  - name: Shared Efforts
+    color: "#38bdf8"
+    spans: [next-gen, partner-payouts, royalties]
+    layout: { x: 0, y: 9, w: 24, h: 1 }
+
+links:
+  - { from: next-gen, to: partner-payouts }
+  - { from: partner-payouts, to: royalties }
+  - { from: platform-enablement, to: data-and-reporting, label: data handoff }

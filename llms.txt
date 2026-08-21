@@ -1,0 +1,93 @@
+# Floorplan
+
+> Team and group map builder. Drag people into groups, rooms and shared spaces, split time with percentages, and keep the whole thing as reusable YAML.
+
+- Live: https://floorplan.neorgon.com/
+- Part of the Neorgon tool suite (free, no signup, runs in your browser): https://neorgon.com/
+- Keywords: teams, org chart, floorplan, yaml, allocation, percentages, reorg planning, pixel office
+
+## Files for agents
+
+- [This file](https://floorplan.neorgon.com/llms.txt): the YAML schema, reuse rules, link contract, and import/export formats
+- [Example A, nested team chart](https://floorplan.neorgon.com/examples/atlas.yaml): two delivery teams, a shared QA band, one person split 50/50, profiles for groups and people
+- [Example B, office building](https://floorplan.neorgon.com/examples/revenue.yaml): explicit grid layout, a spanning title band, partitioned rooms, two on-call bands, owns plaques, doors and a corridor
+- [Source](https://github.com/energon-a-secas/floorplan-site): `js/schema.js` is the validator; `js/layout.js` is the building packer
+
+## Deep links: open a document in someone's browser
+
+- `https://floorplan.neorgon.com/#d=<base64url of the YAML>`: the document travels in the link. Base64url is standard base64 with `+` -> `-`, `/` -> `_`, padding stripped, over the UTF-8 bytes. Refused over ~32 KB of payload; the fragment never reaches any server.
+- `https://floorplan.neorgon.com/?src=<https url>`: the app fetches the YAML from that URL (a raw gist, a GitHub Pages file, any https host that allows CORS). Right for big or changing documents.
+
+The same contract runs on Presentation Sage (`#d=` / `?src=`) and Proctor (`#t=` / `?src=`), so an agent that learned one tool can drive the others.
+
+## Two views of one document
+
+- `mode: diagram` (default): a nested-box chart. Top-level groups are columns, sub-groups nest inside, bands are strips spanning the columns they cover. No coordinates needed.
+- `mode: building`: an office. Every top-level group is a room on a 24-column grid; a group with sub-groups but no members of its own becomes a title band over its children, and those children become the rooms. Bands span the rooms they name. Links between rooms are doors when the rooms touch, corridors when they do not. A person split between two touching rooms sits on the shared wall. Rooms can carry an explicit `layout: { x, y, w, h }` in grid cells; without it the packer places them.
+
+## Schema
+
+```yaml
+title: Atlas Program          # optional
+mode: diagram                 # diagram | building
+notes: |                      # optional, markdown
+  Context the map should carry.
+
+profiles:                     # optional: partial definitions to reuse (gitlabform style)
+  delivery: { color: "#60a5fa", capacity: 6, notes: "Delivery team." }
+  remote:   { location: Remote }
+
+people:                       # optional: a member named in a group but not listed here is created
+  - Maya K                    # bare name: id becomes maya-k
+  - { name: Leon Varga, location: Hungary, role: Developer, notes: "markdown" }
+  - { id: ani, name: Anjali Mehta, extends: remote }
+
+groups:                       # top-level groups; each may nest `groups:`
+  - name: Team Kestrel
+    extends: delivery         # name or list of profile names
+    color: "#60a5fa"          # hex; defaults cycle a palette
+    capacity: 6               # seats; open ones render as vacant desks, over-capacity is flagged
+    owns: [Checkout, Payments]
+    notes: "markdown"
+    layout: { x: 0, y: 1, w: 6, h: 4 }   # building cells, optional
+    members:
+      - maya-k                # id, slug of the name, or the name itself = 100%
+      - { person: leon-varga, pct: 50 }
+      - { ani: 80 }           # single-key shorthand
+    groups:
+      - { name: Back End, members: [...] }
+
+bands:                        # shared spaces: QA pool, on-call rotation, shared efforts
+  - name: QA
+    spans: [team-kestrel, team-lantern]   # groups or sub-groups it stretches across
+    members: [yusuf-demir, { person: anjali-mehta, pct: 20 }]
+    layout: { x: 0, y: 7, w: 12, h: 2 }  # optional; derived from spans otherwise
+
+links:                        # doors (adjacent rooms) or corridors (apart)
+  - { from: team-kestrel, to: team-lantern, label: shared backlog }
+  - [platform-enablement, data-and-reporting]
+```
+
+Percentages: a person's shares across all groups and bands add up; the roster shows the total and the Insights drawer flags anyone over 100% (and, softly, under). A share of 100 is the default; write `pct` only for splits.
+
+## Reuse: profiles and extends
+
+- `profiles:` is a map of partial group or person definitions. A group or person with `extends: name` (or a list, resolved left to right) deep-merges them: scalars override, `members` and `owns` concatenate (deduped by person, later `pct` wins). Profiles may extend profiles; cycles are reported.
+- Profiles cannot hold nested `groups`. Put sub-groups on the group itself.
+- YAML anchors, aliases and `<<:` merge keys work as well (the parser is js-yaml). They are resolved when the document is applied and are not re-emitted; `profiles`/`extends` survive a round-trip through the visual editor.
+- Visual edits regenerate the YAML panel from the board. A group that extends a profile is written as the diff against it. The one lossy case: if a visual edit removes a member the profile provided, that group is written in full and `extends` is dropped (the app says so). Comments are not kept across regeneration.
+
+## Importing
+
+Paste or fetch any of these; the format is detected:
+
+- YAML (above) or the same tree as JSON.
+- A markdown outline: `# Title`, `## Group`, `### Sub-group`, `- Name (50%) @Location`, and `## Name (shared: Group A, Group B)` for a band. Names not in `people:` are created. The Markdown export writes this exact syntax, so an export pastes back unchanged.
+
+## Exporting
+
+YAML (canonical), JSON, Markdown outline, Mermaid (`flowchart TB` with one `subgraph` per group and `-.` edges from bands to what they span), SVG and PNG (2x) of whatever view is on screen, and the `#d=` share link.
+
+## Keyboard
+
+Enter/Space picks up a focused person, Enter on a group seats them (Alt+Enter splits), Delete removes a seat, Esc drops or closes, Cmd/Ctrl+Z undoes 40 steps (redo with Shift), `?` opens help. In Building mode, Visit walks a pixel avatar with WASD or the arrows; walls block, doors let you through, and standing next to a desk shows that person's card.

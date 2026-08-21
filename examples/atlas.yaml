@@ -1,0 +1,76 @@
+# Atlas Program: a program map with two delivery teams and a shared QA pool.
+title: Atlas Program
+mode: diagram
+notes: |
+  Quarterly team map. One developer is split across the two delivery teams;
+  QA is a shared pool that both teams pull from.
+
+  *Rohan shows as R. Desai in the tracker.*
+
+profiles:
+  delivery:
+    color: "#60a5fa"
+    capacity: 6
+    notes: "Delivery team: owns a slice of the roadmap end to end."
+  shared-pool:
+    color: "#fbbf24"
+    notes: "Shared across delivery teams. Pull from here, never assign permanently."
+  qa-india:
+    location: India
+    role: QA Engineer
+
+people:
+  - { name: Noor Haddad, location: USA (Austin), role: Product }
+  - { name: Tomas Ibarra, location: Mexico, role: Scrum Master }
+  - { name: Priya Raman, location: India, role: Developer }
+  - { name: Mateo Salas, location: Colombia, role: Developer }
+  - { name: Leon Varga, location: Hungary, role: Developer, notes: "Splits the week between Kestrel and Lantern." }
+  - { name: Aiko Tanaka, location: Japan, role: Back End }
+  - { name: Sofia Reyes, location: Argentina, role: Back End }
+  - { name: Kwame Mensah, location: Ghana, role: Back End }
+  - { name: Elena Petrova, location: Bulgaria, role: Front End }
+  - { name: Dario Bianchi, location: Italy, role: Solutions Engineer }
+  - { name: Hana Kim, location: South Korea, role: Solutions Engineer }
+  - { name: Rafael Nunes, location: Brazil, role: Solutions Engineer }
+  - { name: Greta Lindqvist, location: Sweden, role: Solutions Engineer }
+  - { name: Yusuf Demir, location: Turkiye, role: QA Lead }
+  - { name: Anjali Mehta, extends: qa-india }
+  - { name: Rohan Desai, extends: qa-india }
+  - { name: Chen Wei, location: Singapore, role: QA Engineer }
+  - { name: Nadia Sidorova, location: Canada (BC), role: QA Engineer }
+  - { name: Omar Farouk, location: Egypt, role: QA Engineer }
+
+groups:
+  - name: Product and Delivery
+    color: "#a78bfa"
+    members: [noor-haddad, tomas-ibarra]
+  - name: Team Kestrel
+    extends: delivery
+    owns: [Checkout, Payments]
+    members:
+      - priya-raman
+      - mateo-salas
+      - { person: leon-varga, pct: 50 }
+  - name: Team Lantern
+    extends: delivery
+    color: "#2dd4bf"
+    owns: [Catalog, Search]
+    members:
+      - { person: leon-varga, pct: 50 }
+    groups:
+      - name: Back End
+        members: [aiko-tanaka, sofia-reyes, kwame-mensah]
+      - name: Front End
+        members: [elena-petrova]
+  - name: Solutions Eng
+    color: "#fb7185"
+    members: [dario-bianchi, hana-kim, rafael-nunes, greta-lindqvist]
+
+bands:
+  - name: QA
+    extends: shared-pool
+    spans: [team-kestrel, team-lantern]
+    members: [yusuf-demir, anjali-mehta, rohan-desai, chen-wei, nadia-sidorova, omar-farouk]
+
+links:
+  - { from: team-kestrel, to: team-lantern, label: shared backlog }
