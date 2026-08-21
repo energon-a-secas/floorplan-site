@@ -727,7 +727,7 @@ body.dragging-room * { cursor: grabbing !important; }
   display: grid; place-items: center; gap: 2px;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.6));
 }
-.drag-ghost img { image-rendering: pixelated; width: 44px; height: 44px; }
+.drag-ghost img { image-rendering: pixelated; width: 48px; height: 48px; }
 .drag-ghost-ini { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: color-mix(in srgb, var(--face) 80%, #000); border: 2px solid #fff; }
 .drag-ghost-hint { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #000; background: var(--under); border-radius: 3px; padding: 0 4px; min-height: 0; }
 .drag-ghost-hint:empty { display: none; }
@@ -1011,7 +1011,9 @@ body.display-shares-hidden .gbox .seat, body.display-shares-badges .gbox .seat {
 body.display-locations-off .seat-loc { display: none !important; }
 .seat--vacant-cat .px-avatar, .seat--vacant-dog .px-avatar { opacity: .85; }
 .av-fieldset { gap: 8px; }
-.av-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.av-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.av-row--actions { gap: 6px; }
+.av-mine img { image-rendering: pixelated; }
 .av-preset { display: grid; place-items: center; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
 .av-preset:hover { border-color: var(--border-strong); }
 .av-preset.is-active { border-color: var(--accent-bright); box-shadow: 0 0 0 1px var(--accent-bright); }

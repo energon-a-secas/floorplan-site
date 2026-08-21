@@ -125,7 +125,7 @@ function movePerson(e) {
     ghost.className = 'drag-ghost'
     const color = drag.el.style.getPropertyValue('--seat-color') || '#64748b'
     ghost.innerHTML = ui.avatars && p
-      ? `<img src="${avatarDataUrl(p.name, color)}" width="36" height="36" alt=""><span class="drag-ghost-hint"></span>`
+      ? `<img src="${avatarDataUrl(p.name, color, p.avatar || null)}" width="48" height="48" alt=""><span class="drag-ghost-hint"></span>`
       : `<span class="drag-ghost-ini" style="--face:${escHtml(color)}">${escHtml(initials(p?.name))}</span><span class="drag-ghost-hint"></span>`
     document.body.appendChild(ghost)
     drag.ghost = ghost

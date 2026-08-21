@@ -9,7 +9,7 @@ import {
   state, ui, snapshot, undo, redo, addPerson, removePerson, addGroup, removeGroup, updateGroup, updatePerson,
   setMembership, removeMembership, reorderGroup, setLayout, clearLayouts, setMode, resetTo, clearAll, membershipsOf, setDisplay,
 } from './state.js'
-import { avatarSpec, HAIR_STYLES } from './avatar.js'
+import { avatarSpec, myCharacter, codeToSpec, specToCode } from './avatar.js'
 import { applyTemplate } from './templates.js'
 import { render, renderBoard, renderRoster, renderDetail, renderToolbar, renderYaml, renderYamlMessages, markYamlInSync, afterChange } from './render.js'
 import { $, showToast, copyText, clamp, debounce } from './utils.js'
@@ -160,6 +160,12 @@ function runAction(action, el, e) {
     case 'clear': snapshot(); clearAll(); ui.selection = null; ui.picked = null; afterChange(); showToast('Board cleared. Cmd/Ctrl+Z brings it back'); break
     case 'toggle-avatars': snapshot(); setDisplay('avatars', state.meta.display.avatars === 'initials' ? 'pixel' : 'initials'); afterChange(); break
     case 'visit': toggleVisit(); break
+    case 'use-my-character': {
+      const mine = myCharacter(); const pid = ui.selection?.type === 'person' ? ui.selection.id : null
+      if (!mine || !pid) { showToast('No character in your Neorgon cookie yet: make one in Paperdoll'); break }
+      snapshot(); updatePerson(pid, { avatar: { code: specToCode(mine) } }); afterChange(); showToast('Your character is on this person')
+      break
+    }
     case 'fit': ui.fit = !ui.fit; renderToolbar(); renderBoard(); break
     case 'toggle-versions': ui.versionsOpen = !ui.versionsOpen; renderToolbar(); import('./render.js').then(m => m.renderVersions()); break
     case 'preview-version': enterPreview(Number(el.dataset.idx)); break
@@ -276,19 +282,17 @@ function onInput(e) {
     if (Number.isFinite(v) && v >= 1 && v <= 100) { setMembership(g, p, v); scheduleSoftChange() }
   }
 }
-/** Merge one avatar field into the person's custom spec (seeded values become explicit so the picker reads back what it shows). */
+/** Set one engine field on the person's custom spec; a code-based avatar is expanded first so the change sticks. */
 function applyAvatarField(key, value) {
   const p = state.people[ui.selection.id]; if (!p) return
-  const spec = avatarSpec(p.name, p.avatar)
   const cur = { ...(p.avatar || {}) }
-  delete cur.preset
-  const next = { kind: spec.kind, hair: HAIR_STYLES[spec.style], hairColor: spec.hair, skin: spec.skin, coat: spec.coat, glasses: spec.glasses, beard: spec.beard, item: spec.item, ...cur }
-  if (spec.shirt) next.shirt = spec.shirt
+  let next
+  if (cur.code) { next = { ...(codeToSpec(cur.code) || {}) } }
+  else { delete cur.preset; next = cur.kind || Object.keys(cur).length ? { ...avatarSpec(p.name, p.avatar), ...cur } : {} }
   if (key === 'shirt' && !value) delete next.shirt
-  else if (key === 'glasses' || key === 'beard') next[key] = value === true || value === 'true'
   else next[key] = value
   snapshot()
-  updatePerson(p.id, { avatar: next })
+  updatePerson(p.id, { avatar: Object.keys(next).length ? next : null })
   afterChange()
 }
 function onChange(e) {
@@ -302,6 +306,15 @@ function onChange(e) {
   if (t.dataset.av && ui.selection?.type === 'person' && t.closest('#detailSheet')) {
     if (isLocked()) return
     applyAvatarField(t.dataset.av, t.type === 'checkbox' ? t.checked : t.value)
+    return
+  }
+  if (t.dataset.avCode && ui.selection?.type === 'person') {
+    if (isLocked()) return
+    const v = t.value.trim()
+    if (!v) { snapshot(); updatePerson(t.dataset.avCode, { avatar: null }); afterChange(); return }
+    const spec = codeToSpec(v)
+    if (!spec) { showToast('That is not a Paperdoll code or link'); return }
+    snapshot(); updatePerson(t.dataset.avCode, { avatar: { code: specToCode(spec) } }); afterChange(); showToast('Character applied')
     return
   }
   if (t.dataset.span && ui.selection?.type === 'group') {

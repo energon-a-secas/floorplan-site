@@ -10,7 +10,7 @@ import { state, ui, membershipsOf } from './state.js'
 import { getLayout } from './render.js'
 import { passableGrid } from './layout.js'
 import { $, showToast, escHtml } from './utils.js'
-import { avatarDataUrl } from './avatar.js'
+import { avatarDataUrl, myCharacter, spriteDataUrl } from './avatar.js'
 import { renderMarkdown } from './markdown.js'
 
 let pos = null, grid = null, el = null, card = null, nearSeat = null
@@ -55,7 +55,8 @@ function mount() {
   el = document.createElement('div')
   el.className = 'visitor'
   el.setAttribute('aria-label', 'You')
-  el.innerHTML = `<img src="${avatarDataUrl('visitor', '#e2e8f0')}" width="36" height="36" alt=""><span class="visitor-tag">you</span>`
+  const mine = myCharacter()
+  el.innerHTML = `<img src="${mine ? spriteDataUrl(mine, 1) : avatarDataUrl('visitor', '#e2e8f0')}" width="32" height="32" alt=""><span class="visitor-tag">you</span>`
   layer.appendChild(el)
   update()
 }

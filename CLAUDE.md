@@ -36,11 +36,11 @@ One model (`state.js`), two renderers over it, one DnD contract between them.
 | `js/events.js` | delegated clicks (`data-action`), keys, YAML apply, menus, inline pct editor |
 | `js/export.js`, `js/image-export.js` | YAML/JSON/Markdown/Mermaid, `#d=` and `?src=`, imports; SVG/PNG from the measured DOM |
 | `js/markdown.js` | escape-first renderer, outline import (`## Group`, `- Name (50%) @Loc`) and export |
-| `js/avatar.js` | seeded 12x12 pixel avatars with kinds (person, cat, dog, robot), items, presets and per-person `avatar` specs; pet placeholders for open seats; lazy Silkscreen font |
+| `js/avatar.js` | adapter over the vendored **Neorgon Avatar Kit** (`js/neorgon-avatar.js`, canonical `packages/neorgon-ui/avatar/`): seeded look for a name with the group colour as shirt, legacy 12x12 `avatar:` keys mapped to engine specs, presets, pet placeholders, `myCharacter()` from the `neo_character` cookie; lazy Silkscreen font |
 | `js/visit.js` | walk the office (lazy-imported) |
 | `js/examples.js`, `examples/*.yaml` | the two bundled documents (same text, the files exist for `?src=` and llms.txt) |
 
-Vendored from `packages/neorgon-ui/`, never edit in place: `js/neorgon-header.js`, `js/neorgon-footer.js`, `js/neorgon-dom.js`, `css/neorgon-*.css`.
+Vendored from `packages/neorgon-ui/`, never edit in place: `js/neorgon-header.js`, `js/neorgon-footer.js`, `js/neorgon-dom.js`, `js/neorgon-avatar.js`, `css/neorgon-*.css`.
 
 ## Data
 
@@ -70,6 +70,7 @@ Vendored from `packages/neorgon-ui/`, never edit in place: `js/neorgon-header.js
 - **The packer runs bands after rooms, then shifts auto rooms a band landed on, up to 3 passes.** Explicit `layout` rects are never moved; overlaps are allowed and flagged by Insights. Room move/resize (grip/corner) writes an explicit layout; "Auto layout" clears them all.
 - **`.workspace` has a fixed height** (`100dvh - 106px`) so the roster and board scroll internally; with `flex: 1` instead, the column flex `main` let it grow to content and the app-mode header auto-hid on the resulting page scroll.
 - **Previewing a snapshot swaps the model in place.** `ui.preview = { index, backup }` holds the working document as JSON; `saveState()` is a no-op while previewing, dnd/pct/keyboard/detail edits are locked (`isLocked()` in `versions.js`), and `exitPreview()` restores the backup. Restore = exit preview, undo snapshot, `resetTo(version, { keepHistory: true })`. Never call `afterChange()` while `ui.preview` is set.
+- **Avatars are drawn at 1x (16px) and scaled by CSS to 32 or 48.** Any other size blurs under `image-rendering: pixelated`. A person's `avatar` can be `{ code }` (from Paperdoll or the cookie), a preset, legacy keys, or engine keys; `customToEngine()` in `avatar.js` is the one place that resolves them.
 - **Visit mode blurs the active element on start.** Keys typed while a field has focus go to the field; WASD in the YAML textarea is text, not movement.
 - **`#d=` on an open tab is a hashchange, not a load**; `app.js` listens for it. `?src=` allows `https://` and `http://localhost` only.
 - The pixel font (Silkscreen) loads lazily on the first building render and is not embedded in SVG/PNG exports (system fallback, said in the toast).

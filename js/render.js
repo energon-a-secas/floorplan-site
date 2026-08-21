@@ -12,7 +12,7 @@ import { emitYaml } from './yaml.js'
 import { renderDiagram } from './render-diagram.js'
 import { renderBuilding } from './render-building.js'
 import { beginFrame, faceHtml, totals } from './parts.js'
-import { loadPixelFont, PRESETS, avatarDataUrl, KINDS, HAIR_STYLES, ITEMS, SKIN, HAIR, COAT, avatarSpec } from './avatar.js'
+import { loadPixelFont, PRESETS, avatarDataUrl, avatarSpec, myCharacter, specToCode, spriteDataUrl } from './avatar.js'
 import { refreshDiff, baseLabel, baseModel } from './diff.js'
 import { coreOverlap, zoneFor, fmtOffset } from './timezones.js'
 
@@ -378,27 +378,28 @@ export function renderChanges() {
 
 
 // ── Avatar picker (person sheet) ─────────────────────────────
+// Presets and a few knobs live here; the full wardrobe is Paperdoll's job.
+// A character arrives from Paperdoll through the fleet cookie ("Use my
+// character") or as a pasted neoav1 code, and leaves through the link.
+const PAPERDOLL = 'https://paperdoll.neorgon.com/'
 function avatarPicker(p, shirt) {
   const cur = p.avatar || null
-  const spec = avatarSpec(p.name, cur)
+  const spec = avatarSpec(p.name, cur, shirt)
   const activePreset = cur?.preset || (cur ? '' : 'seeded')
-  const presets = PRESETS.map(pr => `<button type="button" class="av-preset${activePreset === pr.id ? ' is-active' : ''}" data-preset="${pr.id}" title="${escHtml(pr.name)}" aria-label="${escHtml(pr.name)}"><img src="${avatarDataUrl(p.name, shirt, pr.spec)}" width="30" height="30" alt="" class="px-avatar"></button>`).join('')
-  const opt = (list, val, labels) => list.map((v, i) => `<option value="${v}"${String(val) === String(v) ? ' selected' : ''}>${labels ? labels[i] : v}</option>`).join('')
-  const swatches = (name, colors, val) => `<span class="swatches">${colors.map((c, i) => `<button type="button" class="swatch${val === c ? ' is-active' : ''}" data-av="${name}" data-value="${c}" style="--sw:${c}" aria-label="${name} ${i + 1}"></button>`).join('')}</span>`
-  const isPerson = spec.kind === 'person'
+  const presets = PRESETS.map(pr => `<button type="button" class="av-preset${activePreset === pr.id ? ' is-active' : ''}" data-preset="${pr.id}" title="${escHtml(pr.name)}" aria-label="${escHtml(pr.name)}"><img src="${avatarDataUrl(p.name, pr.spec, shirt)}" width="32" height="32" alt="" class="px-avatar"></button>`).join('')
+  const mine = myCharacter()
+  const code = specToCode(spec)
+  const designHref = `${PAPERDOLL}#c=${encodeURIComponent(code)}&name=${encodeURIComponent(p.name)}`
   return `<fieldset class="sheet-field av-fieldset"><legend>Avatar</legend>
     <div class="av-grid">${presets}</div>
-    <div class="av-fields">
-      <label>Kind <select data-av="kind">${opt(KINDS, spec.kind)}</select></label>
-      ${isPerson ? `<label>Hair <select data-av="hair">${opt(HAIR_STYLES, HAIR_STYLES[spec.style])}</select></label>` : ''}
-      <label>Item <select data-av="item">${opt(ITEMS, spec.item)}</select></label>
-      ${isPerson ? `<label><input type="checkbox" data-av="glasses" ${spec.glasses ? 'checked' : ''}> Glasses</label><label><input type="checkbox" data-av="beard" ${spec.beard ? 'checked' : ''}> Beard</label>` : (spec.kind !== 'robot' ? `<label><input type="checkbox" data-av="glasses" ${spec.glasses ? 'checked' : ''}> Glasses</label>` : '')}
+    <div class="av-row av-row--actions">
+      ${mine ? `<button type="button" class="btn btn--secondary btn--sm av-mine" data-action="use-my-character" title="The character saved in your Neorgon cookie"><img src="${spriteDataUrl(mine, 1)}" width="24" height="24" alt="" class="px-avatar"> Use my character</button>` : `<a class="btn btn--ghost btn--sm" href="${PAPERDOLL}" target="_blank" rel="noopener">Make my character in Paperdoll ↗</a>`}
+      <a class="btn btn--ghost btn--sm" href="${designHref}" target="_blank" rel="noopener" title="Open this look in Paperdoll and fine-tune it">Design in Paperdoll ↗</a>
     </div>
-    ${isPerson ? `<div class="av-row"><span>Skin</span>${swatches('skin', SKIN, spec.skin)}</div><div class="av-row"><span>Hair</span>${swatches('hairColor', HAIR, spec.hair)}</div>` : (spec.kind !== 'robot' ? `<div class="av-row"><span>Coat</span>${swatches('coat', COAT, spec.coat)}</div>` : '')}
+    <label class="sheet-field"><span>Paperdoll code (paste to apply)</span><input type="text" id="avatarCode" data-av-code="${p.id}" value="${cur?.code ? escHtml(cur.code) : ''}" placeholder="neoav1:… or a paperdoll.neorgon.com link" spellcheck="false"></label>
     <div class="av-row"><span>Shirt</span><input type="color" data-av="shirt" value="${escHtml(spec.shirt || shirt)}" aria-label="Shirt colour"> <button type="button" class="btn btn--ghost btn--sm" data-av="shirt" data-value="">Group colour</button>${cur ? ` <button type="button" class="btn btn--ghost btn--sm" data-preset="seeded">Reset to seeded</button>` : ''}</div>
   </fieldset>`
 }
-
 
 // ── Time zones and skills in the group sheet ─────────────────
 function zoneHint(p) {

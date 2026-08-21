@@ -78,11 +78,15 @@ people:                       # optional: a member named in a group but not list
   - Maya K                    # bare name: id becomes maya-k
   - { name: Leon Varga, location: Hungary, role: Developer, notes: "markdown" }
   - { id: ani, name: Anjali Mehta, extends: remote }
-  - { name: Rex, role: Office dog, avatar: dog }                       # avatar: person | cat | dog | robot, or a preset id
+  - { name: Rex, role: Office dog, avatar: dog }                       # avatar: a kind (person cat dog robot ghost alien), a preset id, a Paperdoll code, or a spec
   - { name: Ana Ruiz, location: Chile, tz: America/Santiago, tags: [security, sre] }   # tz: IANA name or +N; tags feed skills coverage
-  - { name: Sam O, avatar: { kind: person, hair: cap, glasses: true, item: laptop, shirt: "#f59e0b" } }
-  # avatar fields: kind, preset (classic glasses cap beard long headset laptop coffee tophat cat dog robot),
-  # hair (flat tall side long cap), hairColor, skin, coat (cats/dogs), glasses, beard, item (none laptop coffee headset hat), shirt (hex)
+  - { name: Sam O, avatar: "neoav1:eyJraW5kIjoicm9ib3QifQ" }            # a code from paperdoll.neorgon.com (Export) or the visitor's cookie
+  - { name: Lia T, avatar: { kind: person, hair: long, outfit: hoodie, head: headset, held: laptop, accessory: glasses, shirt: "#f59e0b" } }
+  # avatar spec slots (shared Neorgon Avatar Kit, 16x16): kind, hair (none flat tall side long curly bun ponytail afro mohawk),
+  # hairColor, skin, coat (cats/dogs), eyes (dot wide sleepy wink), face (none beard moustache freckles blush),
+  # outfit (tee hoodie suit overalls labcoat armor gown), head (none cap beanie headset bandana tophat horns crown halo),
+  # accessory (none glasses sunglasses scarf bowtie badge earrings cape), held (none laptop coffee book phone plant sword wand),
+  # pet (none cat dog bird dragon), shirt (hex). Older keys still read: glasses, beard, item (laptop coffee headset hat), hair: cap.
 
 groups:                       # top-level groups; each may nest `groups:`
   - name: Team Kestrel
@@ -132,6 +136,10 @@ In the app, **Versions** (toolbar) takes a snapshot of the current document, scr
 - Profiles cannot hold nested `groups`. Put sub-groups on the group itself.
 - YAML anchors, aliases and `<<:` merge keys work as well (the parser is js-yaml). They are resolved when the document is applied and are not re-emitted; `profiles`/`extends` survive a round-trip through the visual editor.
 - Visual edits regenerate the YAML panel from the board. A group that extends a profile is written as the diff against it. The one lossy case: if a visual edit removes a member the profile provided, that group is written in full and `extends` is dropped (the app says so). Comments are not kept across regeneration.
+
+## Characters across the fleet (Paperdoll)
+
+Characters are drawn by the shared Neorgon Avatar Kit, the same 16x16 engine Paperdoll (paperdoll.neorgon.com) uses to build them. A character travels as a code `neoav1:<base64url JSON>`; Paperdoll also saves the visitor's own character in a `*.neorgon.com` cookie, so the person sheet offers **Use my character**, Visit mode walks as that character, and **Design in Paperdoll** opens the current look there for fine-tuning. Paste a code or a Paperdoll link into the person sheet to apply it; in YAML, `avatar: "neoav1:..."`. Rare and legendary parts (crown, cape, dragon, ghost) render anywhere; only Paperdoll's picker gates them behind unlocks.
 
 ## Time zones and skills
 

@@ -50,7 +50,7 @@ Floorplan builds team maps. Drag people from a roster into groups and sub-groups
 - **Embeddable** -- `?embed=1&mode=building#d=...` in an iframe shows just the board (never touches the visitor's localStorage); `readonly=1` locks it; `fit=1` scales the building to the frame
 - **Agent-ready** -- `llms.txt` carries the schema, the rules that trip generated documents, the link recipe, and `schema.json` is the same tree as a JSON Schema
 - **Two examples** -- a nested team chart and an office building with explicit layout, bands and links; every name is fictional
-- **Avatars and display** -- per-person avatar presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; per-document display options: center seats in a box, shares as bars / badges / hidden, a cat or dog keeping an open seat, pixel or initials, order by name or share, locations on or off
+- **Avatars and display** -- 16x16 characters from the shared Neorgon Avatar Kit: presets in the person sheet, "Use my character" from your Paperdoll cookie, paste a `neoav1:` code, or "Design in Paperdoll"; per-document display options: center seats in a box, shares as bars / badges / hidden, a cat or dog keeping an open seat, pixel or initials, order by name or share, locations on or off
 - **Skills and time zones** -- tags on people, needs on groups, a coverage check in Insights; locations or `tz:` feed a core-hours strip per group and a warning when a team shares fewer than three hours
 - **Templates, CSV, slides, print** -- start a squad, pod, platform team or shared rotation in one click; paste CSV with a header row; open the map as a Presentation Sage deck; print the board light on paper
 - **Versions and diff** -- dated snapshots stored inside the document (`history:`), a scrubber to preview them, restore with undo, and compare now with any snapshot or a pasted document: the board marks joined/moved/left/share changes and the Changes tab lists them
@@ -138,7 +138,8 @@ floorplan-site/
 │   ├── render-diagram.js   # diagram view
 │   ├── render-building.js  # building view
 │   ├── parts.js            # seat/head markup shared by both views
-│   ├── avatar.js           # seeded 12x12 pixel avatars, lazy pixel font
+│   ├── avatar.js           # adapter over js/neorgon-avatar.js (kit): seeded looks, presets, codes, cookie
+│   ├── neorgon-avatar.js   # vendored Neorgon Avatar Kit (do not edit; sync-avatar.sh)
 │   ├── dnd.js              # pointer drag for people and rooms, keyboard carry
 │   ├── events.js           # delegated clicks, keys, YAML apply, menus
 │   ├── export.js           # YAML/JSON/Markdown/Mermaid, share link, imports

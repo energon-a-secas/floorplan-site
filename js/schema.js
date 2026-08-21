@@ -19,8 +19,8 @@ export const MODES = ['diagram', 'building']
 export const DEFAULT_CELL = 48
 export const DISPLAY_DEFAULTS = { align: 'start', shares: 'bars', placeholder: 'desk', avatars: 'pixel', locations: true, sort: 'manual' }
 export const DISPLAY_OPTIONS = { align: ['start', 'center'], shares: ['bars', 'badges', 'hidden'], placeholder: ['desk', 'cat', 'dog', 'none'], avatars: ['pixel', 'initials'], sort: ['manual', 'name', 'share'] }
-const AVATAR_KEYS = ['preset', 'kind', 'hair', 'hairColor', 'skin', 'coat', 'glasses', 'beard', 'item', 'shirt']
-const AVATAR_KINDS = ['person', 'cat', 'dog', 'robot']
+const AVATAR_KEYS = ['code', 'preset', 'kind', 'hair', 'hairColor', 'skin', 'coat', 'eyes', 'face', 'outfit', 'head', 'accessory', 'held', 'pet', 'glasses', 'beard', 'item', 'shirt']
+const AVATAR_KINDS = ['person', 'cat', 'dog', 'robot', 'ghost', 'alien']
 
 export function emptyModel() {
   return {
@@ -126,7 +126,7 @@ export function tagList(v) {
 /** avatar: "cat" | "preset-id" | { kind, hair, hairColor, skin, coat, glasses, beard, item, shirt, preset } -> normalized object or null */
 export function readAvatar(v) {
   if (v == null) return null
-  if (typeof v === 'string') { const t = v.trim(); if (!t) return null; return AVATAR_KINDS.includes(t) ? { kind: t } : { preset: t } }
+  if (typeof v === 'string') { const t = v.trim(); if (!t) return null; if (t.startsWith('neoav1:')) return { code: t }; return AVATAR_KINDS.includes(t) ? { kind: t } : { preset: t } }
   if (!isObj(v)) return null
   const out = {}
   for (const k of AVATAR_KEYS) if (v[k] !== undefined && v[k] !== null && v[k] !== '') out[k] = typeof v[k] === 'boolean' || typeof v[k] === 'number' ? v[k] : str(v[k])
@@ -368,7 +368,7 @@ function personToDoc(model, p) {
   if (p.tags?.length && JSON.stringify(p.tags) !== JSON.stringify(tagList(base.tags))) o.tags = [...p.tags]
   if (p.avatar && JSON.stringify(p.avatar) !== JSON.stringify(readAvatar(base.avatar))) {
     const keys = Object.keys(p.avatar)
-    o.avatar = keys.length === 1 && (keys[0] === 'kind' || keys[0] === 'preset') ? p.avatar[keys[0]] : { ...p.avatar }
+    o.avatar = keys.length === 1 && (keys[0] === 'kind' || keys[0] === 'preset' || keys[0] === 'code') ? p.avatar[keys[0]] : { ...p.avatar }
   }
   const keys = Object.keys(o)
   return keys.length === 1 && keys[0] === 'name' ? p.name : o
