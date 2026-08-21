@@ -22,13 +22,13 @@ profiles:
 people:
   - { name: Noor Haddad, location: USA (Austin), role: Product }
   - { name: Tomas Ibarra, location: Mexico, role: Scrum Master }
-  - { name: Priya Raman, location: India, role: Developer }
+  - { name: Priya Raman, location: India, role: Developer, tags: [security, backend] }
   - { name: Mateo Salas, location: Colombia, role: Developer }
   - { name: Leon Varga, location: Hungary, role: Developer, notes: "Splits the week between Kestrel and Lantern." }
   - { name: Aiko Tanaka, location: Japan, role: Back End }
   - { name: Sofia Reyes, location: Argentina, role: Back End }
-  - { name: Kwame Mensah, location: Ghana, role: Back End }
-  - { name: Elena Petrova, location: Bulgaria, role: Front End }
+  - { name: Kwame Mensah, location: Ghana, role: Back End, tags: [sre] }
+  - { name: Elena Petrova, location: Bulgaria, role: Front End, tags: [react, accessibility] }
   - { name: Dario Bianchi, location: Italy, role: Solutions Engineer }
   - { name: Hana Kim, location: South Korea, role: Solutions Engineer }
   - { name: Rafael Nunes, location: Brazil, role: Solutions Engineer }
@@ -55,6 +55,7 @@ groups:
     extends: delivery
     color: "#2dd4bf"
     owns: [Catalog, Search]
+    needs: [security, sre]
     members:
       - { person: leon-varga, pct: 50 }
     groups:
