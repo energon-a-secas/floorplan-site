@@ -5,6 +5,7 @@
 
 import { state, allGroups, childrenOf, descendantsOf } from './state.js'
 import { fmtFte, plural } from './utils.js'
+import { coreOverlap } from './timezones.js'
 
 /** personId -> { total, count, parts: [{ group, pct }] } */
 export function personTotals() {
@@ -85,6 +86,33 @@ export function computeInsights(layout = null) {
     }
     if (s.over > 0) {
       items.push({ kind: 'capacity', severity: 'medium', title: `${g.name} is over capacity`, detail: `${s.deep} seated for a capacity of ${s.capacity}.`, ref: { type: 'group', id: g.id } })
+    }
+  }
+
+  // core-hours overlap: a team spread so wide its working days barely meet
+  for (const g of allGroups()) {
+    if (g.kind === 'band') continue
+    const ids = new Set(g.members.map(m => m.person))
+    for (const d of descendantsOf(g.id)) for (const m of d.members) ids.add(m.person)
+    const ppl = [...ids].map(id => state.people[id]).filter(Boolean)
+    const ov = coreOverlap(ppl)
+    if (ov.hours === null) continue
+    if (ov.hours < 3) {
+      const zones = [...new Set(ov.known.map(k => k.label.split('/').pop().replace(/_/g, ' ')))]
+      items.push({ kind: 'timezones', severity: ov.hours < 1 ? 'high' : 'medium', title: `${g.name} shares ${ov.hours === 0 ? 'no' : ov.hours} core hour${ov.hours === 1 ? '' : 's'}`, detail: `${ov.known.length} people across ${zones.length} zones (${zones.slice(0, 4).join(', ')}${zones.length > 4 ? '…' : ''}). Working days of 09:00 to 17:00 local barely meet; plan async or shift one end.`, ref: { type: 'group', id: g.id } })
+    }
+  }
+
+  // skills coverage: a group that needs a tag nobody in it (or its sub-groups) carries
+  for (const g of allGroups()) {
+    if (!g.needs?.length) continue
+    const have = new Set()
+    for (const m of g.members) for (const t of state.people[m.person]?.tags || []) have.add(t)
+    for (const d of descendantsOf(g.id)) for (const m of d.members) for (const t of state.people[m.person]?.tags || []) have.add(t)
+    const missing = g.needs.filter(t => !have.has(t))
+    if (missing.length) {
+      const holders = Object.values(state.people).filter(p => p.tags?.some(t => missing.includes(t))).map(p => p.name)
+      items.push({ kind: 'skills', severity: 'medium', title: `${g.name} is missing ${missing.map(t => `"${t}"`).join(', ')}`, detail: holders.length ? `Nobody seated here has it. People who do: ${holders.slice(0, 5).join(', ')}.` : 'Nobody in the roster carries that tag yet.', ref: { type: 'group', id: g.id } })
     }
   }
 

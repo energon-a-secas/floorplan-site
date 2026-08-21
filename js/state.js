@@ -11,7 +11,7 @@
 //  the stack on reset; this does not).
 // ════════════════════════════════════════════════════════════
 
-import { emptyModel, normalizeDoc, modelToDoc, MODES, DISPLAY_OPTIONS, readAvatar } from './schema.js'
+import { emptyModel, normalizeDoc, modelToDoc, MODES, DISPLAY_OPTIONS, readAvatar, tagList } from './schema.js'
 import { debounce, slug, colorAt } from './utils.js'
 
 export const STORAGE_KEY = 'floorplan-v1'
@@ -86,14 +86,15 @@ export function addPerson({ name, location = '', role = '' }) {
   const clean = String(name ?? '').trim().slice(0, 60)
   if (!clean) return null
   const id = uniqueKey(clean, state.people)
-  const p = { id, name: clean, location: String(location).trim(), role: String(role).trim(), color: '', notes: '', avatar: null, extends: [] }
+  const p = { id, name: clean, location: String(location).trim(), role: String(role).trim(), color: '', notes: '', avatar: null, tz: '', tags: [], extends: [] }
   state.people[id] = p
   return p
 }
 export function updatePerson(id, patch) {
   const p = state.people[id]; if (!p) return
-  for (const k of ['name', 'location', 'role', 'color', 'notes']) if (k in patch) p[k] = String(patch[k] ?? '')
+  for (const k of ['name', 'location', 'role', 'color', 'notes', 'tz']) if (k in patch) p[k] = String(patch[k] ?? '')
   if ('avatar' in patch) p.avatar = readAvatar(patch.avatar)
+  if ('tags' in patch) p.tags = tagList(patch.tags)
 }
 /** Document-level display options (align, shares, placeholder, avatars, sort, locations). */
 export function setDisplay(key, value) {
@@ -115,7 +116,7 @@ export function addGroup({ name, parent = null, kind = 'group', spans = [] }) {
   const tops = Object.values(state.groups).filter(g => g.parent === null).length
   const color = parent ? (state.groups[parent]?.color || colorAt(0)) : colorAt(tops)
   const g = { id, kind, name: clean, parent: kind === 'band' ? null : parent, spans: kind === 'band' ? [...spans] : [],
-    color, notes: '', capacity: null, owns: [], extends: [], order: nextOrder(), members: [], layout: null }
+    color, notes: '', capacity: null, owns: [], needs: [], extends: [], order: nextOrder(), members: [], layout: null }
   state.groups[id] = g
   return g
 }
@@ -124,6 +125,7 @@ export function updateGroup(id, patch) {
   for (const k of ['name', 'color', 'notes']) if (k in patch) g[k] = String(patch[k] ?? '')
   if ('capacity' in patch) { const n = Number(patch.capacity); g.capacity = Number.isFinite(n) && n >= 0 ? Math.round(n) : null }
   if ('owns' in patch) g.owns = Array.isArray(patch.owns) ? patch.owns.map(String).filter(Boolean) : []
+  if ('needs' in patch) g.needs = tagList(patch.needs)
   if ('spans' in patch && g.kind === 'band') g.spans = Array.isArray(patch.spans) ? patch.spans.filter(x => state.groups[x]) : []
 }
 export function removeGroup(id) {

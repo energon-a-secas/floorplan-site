@@ -79,6 +79,7 @@ people:                       # optional: a member named in a group but not list
   - { name: Leon Varga, location: Hungary, role: Developer, notes: "markdown" }
   - { id: ani, name: Anjali Mehta, extends: remote }
   - { name: Rex, role: Office dog, avatar: dog }                       # avatar: person | cat | dog | robot, or a preset id
+  - { name: Ana Ruiz, location: Chile, tz: America/Santiago, tags: [security, sre] }   # tz: IANA name or +N; tags feed skills coverage
   - { name: Sam O, avatar: { kind: person, hair: cap, glasses: true, item: laptop, shirt: "#f59e0b" } }
   # avatar fields: kind, preset (classic glasses cap beard long headset laptop coffee tophat cat dog robot),
   # hair (flat tall side long cap), hairColor, skin, coat (cats/dogs), glasses, beard, item (none laptop coffee headset hat), shirt (hex)
@@ -89,6 +90,7 @@ groups:                       # top-level groups; each may nest `groups:`
     color: "#60a5fa"          # hex; defaults cycle a palette
     capacity: 6               # seats; open ones render as vacant desks, over-capacity is flagged
     owns: [Checkout, Payments]
+    needs: [security]         # tags this group must cover; Insights flags a miss
     notes: "markdown"
     layout: { x: 0, y: 1, w: 6, h: 4 }   # building cells, optional
     members:
@@ -131,16 +133,22 @@ In the app, **Versions** (toolbar) takes a snapshot of the current document, scr
 - YAML anchors, aliases and `<<:` merge keys work as well (the parser is js-yaml). They are resolved when the document is applied and are not re-emitted; `profiles`/`extends` survive a round-trip through the visual editor.
 - Visual edits regenerate the YAML panel from the board. A group that extends a profile is written as the diff against it. The one lossy case: if a visual edit removes a member the profile provided, that group is written in full and `extends` is dropped (the app says so). Comments are not kept across regeneration.
 
+## Time zones and skills
+
+- A person's zone comes from `tz:` (an IANA name such as `America/Lima`, or `+2`) or from the words in `location:` (countries and common cities are recognised). The group sheet shows a core-hours strip (09:00 to 17:00 local, drawn on UTC) and the shared hours; Insights flags a team that shares fewer than three.
+- `tags:` on people and `needs:` on groups: a group whose needs nobody inside it (or its sub-groups) carries is flagged, with the people elsewhere who do.
+
 ## Importing
 
 Paste or fetch any of these; the format is detected:
 
 - YAML (above) or the same tree as JSON.
+- CSV with a header row: `name, team, sub, location, role, pct, tz, tags` (any subset; `group` works for `team`, tags separated by `;` or `|`). One row per membership, so a person split across two teams is two rows.
 - A markdown outline: `# Title`, `## Group`, `### Sub-group`, `- Name (50%) @Location`, and `## Name (shared: Group A, Group B)` for a band. Names not in `people:` are created. The Markdown export writes this exact syntax, so an export pastes back unchanged.
 
 ## Exporting
 
-YAML (canonical), JSON, Markdown outline, Mermaid (`flowchart TB` with one `subgraph` per group and `-.` edges from bands to what they span), SVG and PNG (2x) of whatever view is on screen, and the `#d=` share link.
+YAML (canonical), JSON, Markdown outline, Mermaid (`flowchart TB` with one `subgraph` per group and `-.` edges from bands to what they span), SVG and PNG (2x) of whatever view is on screen, the `#d=` share link, Print (board only, light on paper), and **Open as slides**, which builds a Presentation Sage deck (title, numbers, one people slide per group, the shared spaces, a link back) and opens it at slides.neorgon.com. Templates (toolbar) start a squad, a pod with Back End and Front End, a platform team, leadership, or a shared on-call, QA or support band.
 
 ## Keyboard
 

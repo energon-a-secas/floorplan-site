@@ -277,6 +277,17 @@
         },
         "avatar": {
           "$ref": "#/$defs/avatar"
+        },
+        "tz": {
+          "type": "string",
+          "description": "IANA zone (America/Lima) or a numeric offset (+2); otherwise derived from location words"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Skills; matched against group needs"
         }
       },
       "anyOf": [
@@ -332,6 +343,13 @@
         },
         "layout": {
           "$ref": "#/$defs/rect"
+        },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Tags this group must cover; Insights flags a miss"
         }
       }
     },
@@ -434,6 +452,21 @@
         },
         "avatar": {
           "$ref": "#/$defs/avatar"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "needs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tz": {
+          "type": "string"
         }
       },
       "not": {

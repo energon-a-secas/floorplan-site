@@ -92,6 +92,8 @@
             <button type="button" role="menuitem" data-export="mermaid">Download Mermaid</button>
             <button type="button" role="menuitem" data-export="svg">Download SVG</button>
             <button type="button" role="menuitem" data-export="png">Download PNG (2x)</button>
+            <button type="button" role="menuitem" data-export="slides">Open as slides (Presentation Sage)</button>
+            <button type="button" role="menuitem" data-export="print">Print</button>
             <button type="button" role="menuitem" data-export="share">Copy share link</button>
             <button type="button" role="menuitem" data-export="prompt">Copy as prompt for Claude</button>
           </div>
@@ -128,6 +130,18 @@
           <div class="toolbar">
             <button type="button" class="btn btn--secondary btn--sm" data-action="add-group">+ Group</button>
             <button type="button" class="btn btn--secondary btn--sm" data-action="add-band" title="A strip that spans several groups: QA pool, on-call, shared efforts">+ Shared space</button>
+            <div class="menu-wrap">
+              <button type="button" class="btn btn--ghost btn--sm" id="templatesBtn" aria-haspopup="menu" aria-expanded="false" title="Start a group from a shape">Templates ▾</button>
+              <div class="header-menu" id="templatesMenu" role="menu" aria-label="Group templates">
+                <button type="button" role="menuitem" data-template="squad">Squad <small>6 seats, owns one area</small></button>
+                <button type="button" role="menuitem" data-template="pod">Pod: Back End + Front End <small>a team with two sub-groups</small></button>
+                <button type="button" role="menuitem" data-template="platform">Platform team <small>8 seats, owns tooling and CI</small></button>
+                <button type="button" role="menuitem" data-template="leadership">Leadership <small>product, engineering, design leads</small></button>
+                <button type="button" role="menuitem" data-template="oncall">On-call rotation <small>shared band across every team</small></button>
+                <button type="button" role="menuitem" data-template="qa">QA pool <small>shared band across every team</small></button>
+                <button type="button" role="menuitem" data-template="support">Support desk <small>shared band, 3 seats</small></button>
+              </div>
+            </div>
             <span class="toolbar-sep" aria-hidden="true"></span>
             <button type="button" class="btn btn--ghost btn--sm btn--icon" id="undoBtn" data-action="undo" aria-label="Undo" title="Undo (Cmd/Ctrl+Z)">↶</button>
             <button type="button" class="btn btn--ghost btn--sm btn--icon" id="redoBtn" data-action="redo" aria-label="Redo" title="Redo (Shift+Cmd/Ctrl+Z)">↷</button>
@@ -216,11 +230,11 @@
   <dialog class="fp-dialog" id="importDialog" aria-labelledby="importTitle">
     <header class="modal__header"><h2 id="importTitle">Import</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close">×</button></header>
     <div class="modal__body">
-      <p>Paste <strong>YAML</strong>, <strong>JSON</strong>, or a <strong>markdown outline</strong> (<code>## Group</code>, <code>### Sub-group</code>, <code>- Name (50%) @Location</code>). The format is detected. Or pick a file.</p>
+      <p>Paste <strong>YAML</strong>, <strong>JSON</strong>, a <strong>markdown outline</strong> (<code>## Group</code>, <code>### Sub-group</code>, <code>- Name (50%) @Location</code>), or <strong>CSV</strong> with a header row (<code>name, team, sub, location, role, pct, tz, tags</code>). The format is detected. Or pick a file.</p>
       <textarea id="importText" class="yaml-text yaml-text--import" rows="12" spellcheck="false" placeholder="## Platform&#10;- Maya K @Chile&#10;- Leon V (50%)&#10;### Back End&#10;- Aiko T @Japan"></textarea>
     </div>
     <footer class="modal__footer">
-      <input type="file" id="importFile" accept=".yaml,.yml,.json,.md,.markdown,.txt" hidden>
+      <input type="file" id="importFile" accept=".yaml,.yml,.json,.md,.markdown,.txt,.csv" hidden>
       <button type="button" class="btn btn--ghost" data-action="import-file">Choose file…</button>
       <button type="button" class="btn btn--ghost" data-action="dialog-close">Cancel</button>
       <button type="button" class="btn btn--primary" data-action="import-apply">Import</button>
@@ -233,6 +247,7 @@
       <p><strong>Groups</strong> hold people. A group inside a group is a sub-group. A <strong>shared space</strong> (band) spans several groups: a QA pool, an on-call rotation, shared efforts.</p>
       <p><strong>Percentages.</strong> Drop with <kbd>Alt</kbd> held to split a person between two groups. Every seat has a share bar: drag it (5% steps), or focus it and nudge with the arrows; click the <em>NN%</em> badge to type a value. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
       <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner. <strong>Visit</strong> lets you walk it.</p>
+      <p><strong>Teams that work.</strong> Give people <em>tags</em> and groups <em>needs</em>; Insights flags a group missing a skill. Locations (or a <em>time zone</em>) feed a core-hours strip in the group sheet and an Insight when a team shares fewer than three hours. <strong>Templates</strong> start a squad, a pod, a platform team or a shared rotation in one click; <strong>CSV</strong> pastes straight in.</p>
       <p><strong>Display.</strong> Per document: center seats in their box, show shares as bars, badges only or hide them, let a cat or a dog keep an open seat, pixel sprites or initials, order seats by name or share, hide locations. Each person's avatar has presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; everything lands in the YAML.</p>
       <p><strong>Versions.</strong> Snapshot the document before a change (it is stored inside the YAML as <code>history:</code>, so it travels with links and exports). Scrub through snapshots, restore one, or <strong>compare now</strong> with a snapshot or a pasted document: the board marks who moved, joined, left, and whose share changed; the Changes tab lists it all.</p>
       <p><strong>YAML</strong> is the document. Edit it in the side panel and Apply (<kbd>Cmd/Ctrl+Enter</kbd>). Define <code>profiles:</code> once and <code>extends:</code> them from groups or people, gitlabform style. Share links carry the whole document.</p>

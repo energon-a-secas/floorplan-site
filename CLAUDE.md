@@ -28,6 +28,7 @@ One model (`state.js`), two renderers over it, one DnD contract between them.
 | `js/state.js` | `state` (meta, profiles, people, groups, links), `ui` (never persisted), mutations, localStorage `floorplan-v1`, undo/redo 40 deep |
 | `js/layout.js` | `computeLayout()`: rects in grid cells for rooms, sub-rooms, bands, title bands; doors vs corridors; straddle seats; overlaps; `passableGrid()` for Visit |
 | `js/allocation.js` | per-person totals, group FTE/capacity, `computeInsights()` |
+| `js/timezones.js`, `js/templates.js` | zone lookup (tz or location words, Intl offsets) and core-hours overlap; group templates over the state mutations |
 | `js/versions.js`, `js/diff.js` | `history` snapshots (take, preview, restore, delete), compare baseline; `diffModels(a, b)` and `marksFor()` feed the board overlay and the Changes tab |
 | `js/render.js` | shell: roster, toolbar state, board dispatch, YAML panel, insights drawer, detail sheet, `afterChange()` |
 | `js/render-diagram.js`, `js/render-building.js`, `js/parts.js` | the two views and the seat/head markup they share |

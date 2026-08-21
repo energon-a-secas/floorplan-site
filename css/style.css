@@ -1025,3 +1025,38 @@ body.display-locations-off .seat-loc { display: none !important; }
 .swatches { display: inline-flex; gap: 4px; }
 .swatch { width: 20px; height: 20px; border-radius: 3px; border: 1px solid rgba(255,255,255,.3); background: var(--sw); cursor: pointer; }
 .swatch.is-active { outline: 2px solid var(--accent-bright); outline-offset: 1px; }
+
+
+/* ── Skills coverage + core hours (group sheet) ────────────── */
+.coverage { display: flex; flex-wrap: wrap; gap: 4px; }
+.cov-tag { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; border: 1px solid; }
+.cov-tag.is-ok { color: var(--ok); border-color: rgba(52,211,153,.45); background: rgba(52,211,153,.08); }
+.cov-tag.is-missing { color: var(--over); border-color: rgba(244,63,94,.45); background: rgba(244,63,94,.08); }
+.tz-strip { display: flex; flex-direction: column; gap: 3px; }
+.tz-head { display: flex; align-items: baseline; justify-content: space-between; }
+.tz-sum { font-size: var(--text-xs); font-weight: 700; color: var(--ok); }
+.tz-sum.is-low { color: var(--over); }
+.tz-row { display: grid; grid-template-columns: 110px 1fr; gap: 6px; align-items: center; }
+.tz-name { font-size: 10px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tz-slots { display: grid; grid-template-columns: repeat(48, 1fr); gap: 1px; height: 10px; }
+.tz-slots b { display: block; background: rgba(255,255,255,.06); }
+.tz-slots b.on { background: color-mix(in srgb, var(--accent-bright) 70%, #fff); }
+.tz-row--shared .tz-slots b.on { background: var(--ok); }
+.tz-row--shared .tz-name { color: var(--text-primary); font-weight: 700; }
+.tz-slots--hours { grid-template-columns: repeat(24, 1fr); height: 12px; }
+.tz-slots--hours i { font-size: 9px; color: var(--text-muted); font-style: normal; }
+
+/* ── Print: the board only, on paper ───────────────────────── */
+@media print {
+  .header-bar, .neo-footer, .roster, .board-toolbar, .side-panel, .detail-sheet, .insight-drawer, .drawer-scrim, .versions-bar, .preview-banner, .embed-link, .toast, .skip-link { display: none !important; }
+  body, main#main, .workspace { display: block !important; height: auto !important; min-height: 0 !important; background: #fff !important; color: #111 !important; }
+  .board { overflow: visible !important; background: #fff !important; }
+  .diagram, .building { min-width: 0 !important; }
+  .gbox { background: #f4f6fa !important; border-color: #c7cdd8 !important; color: #111 !important; break-inside: avoid; }
+  .gbox .g-name, .gbox .seat-name { color: #111 !important; }
+  .gbox .g-stats, .gbox .seat-loc, .gbox .own-tag { color: #444 !important; }
+  .seat { background: #fff !important; border-color: #c7cdd8 !important; }
+  .own-tag { background: #e5e9f2 !important; border-color: #c7cdd8 !important; }
+  .pct-bar { border-color: #888 !important; background: #ddd !important; }
+  .building-layer { box-shadow: none !important; }
+}

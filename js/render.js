@@ -4,7 +4,7 @@
 //  HTML strings; this file owns the DOM targets.
 // ════════════════════════════════════════════════════════
 
-import { state, ui, allGroups, topGroups, childrenOf, membershipsOf, canUndo, canRedo, debouncedSave } from './state.js'
+import { state, ui, allGroups, topGroups, childrenOf, descendantsOf, membershipsOf, canUndo, canRedo, debouncedSave } from './state.js'
 import { $, escHtml, fmtFte, plural, showToast } from './utils.js'
 import { computeInsights, bandOf } from './allocation.js'
 import { renderMarkdown } from './markdown.js'
@@ -14,6 +14,7 @@ import { renderBuilding } from './render-building.js'
 import { beginFrame, faceHtml, totals } from './parts.js'
 import { loadPixelFont, PRESETS, avatarDataUrl, KINDS, HAIR_STYLES, ITEMS, SKIN, HAIR, COAT, avatarSpec } from './avatar.js'
 import { refreshDiff, baseLabel, baseModel } from './diff.js'
+import { coreOverlap, zoneFor, fmtOffset } from './timezones.js'
 
 let lastLayout = null
 export const getLayout = () => lastLayout
@@ -234,6 +235,10 @@ function personDetail(p) {
     ${field('Name', 'person.name', p.name)}
     ${field('Location', 'person.location', p.location, { placeholder: 'City or country' })}
     ${field('Role', 'person.role', p.role, { placeholder: 'Developer, QA, Product...' })}
+    <div class="sheet-row">
+      ${field('Time zone', 'person.tz', p.tz, { placeholder: zoneHint(p) })}
+      ${field('Tags (comma separated)', 'person.tags', (p.tags || []).join(', '), { placeholder: 'security, sre, react' })}
+    </div>
     ${p.extends.length ? `<p class="sheet-hint">Extends profile: ${p.extends.map(escHtml).join(', ')}</p>` : ''}
     ${avatarPicker(p, t.parts[0]?.group.color || p.color || '#475569')}
     <label class="sheet-field"><span>Notes (markdown)</span><textarea data-field="person.notes" rows="4" placeholder="Anything the map should remember about this person">${escHtml(p.notes)}</textarea></label>
@@ -264,7 +269,10 @@ function groupDetail(g) {
       ${field('Capacity', 'group.capacity', g.capacity ?? '', { type: 'number', placeholder: 'seats' })}
     </div>
     ${field('Owns (comma separated)', 'group.owns', g.owns.join(', '), { placeholder: 'Checkout, Payments' })}
+    ${field('Needs (tags this group must cover)', 'group.needs', (g.needs || []).join(', '), { placeholder: 'security, sre' })}
+    ${coverageHtml(g)}
     ${spanOpts}
+    ${coreHoursHtml(g)}
     <label class="sheet-field"><span>Notes (markdown)</span><textarea data-field="group.notes" rows="4" placeholder="Mission, rituals, links">${escHtml(g.notes)}</textarea></label>
     ${g.notes.trim() ? `<div class="md-preview">${renderMarkdown(g.notes)}</div>` : ''}
     <h3 class="sheet-sub">Members</h3>
@@ -389,4 +397,36 @@ function avatarPicker(p, shirt) {
     ${isPerson ? `<div class="av-row"><span>Skin</span>${swatches('skin', SKIN, spec.skin)}</div><div class="av-row"><span>Hair</span>${swatches('hairColor', HAIR, spec.hair)}</div>` : (spec.kind !== 'robot' ? `<div class="av-row"><span>Coat</span>${swatches('coat', COAT, spec.coat)}</div>` : '')}
     <div class="av-row"><span>Shirt</span><input type="color" data-av="shirt" value="${escHtml(spec.shirt || shirt)}" aria-label="Shirt colour"> <button type="button" class="btn btn--ghost btn--sm" data-av="shirt" data-value="">Group colour</button>${cur ? ` <button type="button" class="btn btn--ghost btn--sm" data-preset="seeded">Reset to seeded</button>` : ''}</div>
   </fieldset>`
+}
+
+
+// ── Time zones and skills in the group sheet ─────────────────
+function zoneHint(p) {
+  const z = zoneFor({ ...p, tz: '' })
+  return z ? `${z.label} (from location, ${fmtOffset(z.offset)})` : 'Europe/Madrid, America/Lima, or +2'
+}
+function deepPeople(g) {
+  const ids = new Set(g.members.map(m => m.person))
+  for (const d of descendantsOf(g.id)) for (const m of d.members) ids.add(m.person)
+  return [...ids].map(id => state.people[id]).filter(Boolean)
+}
+function coverageHtml(g) {
+  if (!g.needs?.length) return ''
+  const have = new Set(deepPeople(g).flatMap(p => p.tags || []))
+  return `<div class="coverage">${g.needs.map(t => `<span class="cov-tag${have.has(t) ? ' is-ok' : ' is-missing'}">${have.has(t) ? '✓' : '✗'} ${escHtml(t)}</span>`).join('')}</div>`
+}
+function coreHoursHtml(g) {
+  const people = deepPeople(g)
+  if (people.length < 2) return ''
+  const ov = coreOverlap(people)
+  if (ov.hours === null) return `<p class="sheet-hint">Core hours: add locations or time zones to ${people.length < 2 ? 'the members' : 'at least two members'} to see the overlap.</p>`
+  const hourHead = Array.from({ length: 24 }, (_, h) => `<i${h % 6 === 0 ? ' class="tick"' : ''}>${h % 6 === 0 ? h : ''}</i>`).join('')
+  const row = (label, slots, cls = '') => `<div class="tz-row${cls}"><span class="tz-name">${escHtml(label)}</span><span class="tz-slots">${slots.map(on => `<b${on ? ' class="on"' : ''}></b>`).join('')}</span></div>`
+  return `<div class="tz-strip">
+    <div class="tz-head"><span class="sheet-sub">Core hours, UTC</span><span class="tz-sum${ov.hours < 3 ? ' is-low' : ''}">${ov.hours} shared h</span></div>
+    <div class="tz-row tz-row--hours"><span class="tz-name"></span><span class="tz-slots tz-slots--hours">${hourHead}</span></div>
+    ${ov.known.map(k => row(`${k.person.name} ${fmtOffset(k.offset)}`, k.slots)).join('')}
+    ${row('Shared', ov.shared, ' tz-row--shared')}
+    ${ov.unknown.length ? `<p class="sheet-hint">No zone for: ${ov.unknown.map(p => escHtml(p.name)).join(', ')}</p>` : ''}
+  </div>`
 }

@@ -73,6 +73,8 @@ export function mergeDef(base, over) {
       out.members = [...seen.values()].map(r => (r.pct == null ? r.ref : { person: r.ref, pct: r.pct }))
     } else if (k === 'owns') {
       out.owns = [...new Set([...asList(base.owns), ...asList(v)].map(str))]
+    } else if (k === 'needs' || k === 'tags') {
+      out[k] = [...new Set([...tagList(base[k]), ...tagList(v)])]
     } else {
       out[k] = v
     }
@@ -113,6 +115,12 @@ function readLayout(v, warnings, ctx) {
     return null
   }
   return { x, y, w, h }
+}
+
+/** tags / needs: list or comma string -> lowercase, trimmed, unique */
+export function tagList(v) {
+  const raw = Array.isArray(v) ? v : typeof v === 'string' ? v.split(',') : []
+  return [...new Set(raw.map(x => str(x).trim().toLowerCase()).filter(Boolean))]
 }
 
 /** avatar: "cat" | "preset-id" | { kind, hair, hairColor, skin, coat, glasses, beard, item, shirt, preset } -> normalized object or null */
@@ -181,6 +189,8 @@ export function normalizeDoc(raw) {
       color: isHex(merged.color) ? merged.color : '',
       notes: str(merged.notes),
       avatar: readAvatar(merged.avatar),
+      tz: str(merged.tz ?? merged.timezone).trim(),
+      tags: tagList(merged.tags ?? merged.skills),
       extends: ext,
     }
   })
@@ -203,6 +213,7 @@ export function normalizeDoc(raw) {
       notes: str(merged.notes),
       capacity: cap,
       owns: asList(merged.owns).map(str).filter(Boolean),
+      needs: tagList(merged.needs ?? merged.skills),
       extends: ext,
       order: order++,
       members: [],
@@ -241,7 +252,7 @@ export function normalizeDoc(raw) {
           continue
         }
         const id = uniqueId(slug(r.ref), personIds)
-        p = model.people[id] = { id, name: r.ref, location: '', role: '', color: '', notes: '', avatar: null, extends: [] }
+        p = model.people[id] = { id, name: r.ref, location: '', role: '', color: '', notes: '', avatar: null, tz: '', tags: [], extends: [] }
         warnings.push(`Group "${g.name}": created person "${r.ref}" from the members list`)
       }
       if (seen.has(p.id)) continue
@@ -351,9 +362,10 @@ function personToDoc(model, p) {
   if (p.id !== slug(p.name)) o.id = p.id
   o.name = p.name
   if (p.extends.length) o.extends = p.extends.length === 1 ? p.extends[0] : [...p.extends]
-  for (const k of ['location', 'role', 'color', 'notes']) {
+  for (const k of ['location', 'role', 'color', 'notes', 'tz']) {
     if (p[k] && p[k] !== str(base[k])) o[k] = p[k]
   }
+  if (p.tags?.length && JSON.stringify(p.tags) !== JSON.stringify(tagList(base.tags))) o.tags = [...p.tags]
   if (p.avatar && JSON.stringify(p.avatar) !== JSON.stringify(readAvatar(base.avatar))) {
     const keys = Object.keys(p.avatar)
     o.avatar = keys.length === 1 && (keys[0] === 'kind' || keys[0] === 'preset') ? p.avatar[keys[0]] : { ...p.avatar }
@@ -384,6 +396,9 @@ function groupToDoc(model, g, all, flattened) {
   const baseOwns = asList(base.owns).map(str)
   const owns = g.owns.filter(x => !baseOwns.includes(x))
   if (owns.length) o.owns = owns
+  const baseNeeds = tagList(base.needs)
+  const needs = (g.needs || []).filter(x => !baseNeeds.includes(x))
+  if (needs.length) o.needs = needs
   if (g.layout && JSON.stringify(g.layout) !== JSON.stringify(base.layout || null)) o.layout = { ...g.layout }
   // members: emit those not provided (with the same pct) by the base
   const basePct = new Map()

@@ -10,12 +10,13 @@ import {
   setMembership, removeMembership, reorderGroup, setLayout, clearLayouts, setMode, resetTo, clearAll, membershipsOf, setDisplay,
 } from './state.js'
 import { avatarSpec, HAIR_STYLES } from './avatar.js'
+import { applyTemplate } from './templates.js'
 import { render, renderBoard, renderRoster, renderDetail, renderToolbar, renderYaml, renderYamlMessages, markYamlInSync, afterChange } from './render.js'
 import { $, showToast, copyText, clamp, debounce } from './utils.js'
 import { parseYaml } from './yaml.js'
 import { exampleById } from './examples.js'
 import { bindDnd, commitDrop } from './dnd.js'
-import { exportYamlFile, exportJsonFile, exportMarkdownFile, exportMermaidFile, copyShareLink, copyPrompt, importFile, importText, parseAny } from './export.js'
+import { exportYamlFile, exportJsonFile, exportMarkdownFile, exportMermaidFile, copyShareLink, copyPrompt, importFile, importText, parseAny, openAsSlides } from './export.js'
 import { takeSnapshot, deleteSnapshot, enterPreview, exitPreview, restorePreview, setCompare, isLocked } from './versions.js'
 import { exportSVG, exportPNG } from './image-export.js'
 
@@ -39,6 +40,7 @@ export function bindEvents() {
   setupMenu('examplesBtn', 'examplesMenu')
   setupMenu('exportBtn', 'exportMenu')
   setupMenu('displayBtn', 'displayMenu', { stayOpen: true })
+  setupMenu('templatesBtn', 'templatesMenu')
   // Versions strip: snapshot form, compare select, scrubber (delegated; the strip re-renders)
   document.addEventListener('submit', e => {
     if (e.target.id !== 'snapForm') return
@@ -89,6 +91,13 @@ function onClick(e) {
   if (modeBtn) { switchMode(modeBtn.dataset.mode); return }
   const ex = t.closest('[data-example]')
   if (ex) { loadExample(ex.dataset.example); return }
+  const tpl = t.closest('[data-template]')
+  if (tpl) {
+    if (isLocked()) { showToast('Read-only view'); return }
+    snapshot(); const gid = applyTemplate(tpl.dataset.template); afterChange()
+    if (gid) select('group', gid, { focusName: true })
+    return
+  }
   const exp = t.closest('[data-export]')
   if (exp) { runExport(exp.dataset.export); return }
   const preset = t.closest('[data-preset]')
@@ -412,6 +421,8 @@ function runExport(kind) {
     case 'png': exportPNG(2); break
     case 'share': copyShareLink(); break
     case 'prompt': copyPrompt(); break
+    case 'slides': openAsSlides(); break
+    case 'print': window.print(); break
     default: break
   }
 }
