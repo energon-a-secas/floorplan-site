@@ -25,7 +25,9 @@ export function bindDnd() {
 }
 
 function onDown(e) {
-  if (e.button !== 0 || drag || ui.visiting) return
+  if (e.button !== 0 || drag || ui.visiting || ui.readonly) return
+  const bar = e.target.closest('[data-pct-bar]')
+  if (bar) { startPct(bar, e); return }
   const handle = e.target.closest('[data-room-handle]')
   if (handle) { startRoom(handle, e); return }
   if (e.target.closest('button, input, textarea, select, a')) return
@@ -37,7 +39,9 @@ function onDown(e) {
 
 function onMove(e) {
   if (!drag) return
-  if (drag.kind === 'person') movePerson(e); else moveRoom(e)
+  if (drag.kind === 'person') movePerson(e)
+  else if (drag.kind === 'pct') movePct(e)
+  else moveRoom(e)
 }
 
 function onUp(e) {
@@ -48,6 +52,8 @@ function onUp(e) {
     if (!d.committed) return            // a click: the click handler takes it
     const target = dropTargetAt(e.clientX, e.clientY)
     if (target) commitDrop(d.person, d.from, target, { split: e.altKey })
+  } else if (d.kind === 'pct') {
+    endPct(d, true)
   } else {
     document.body.classList.remove('dragging-room')
     if (d.committed) afterChange()
@@ -58,7 +64,52 @@ function cancel() {
   if (!drag) return
   const d = drag; drag = null
   if (d.kind === 'person') cleanupPerson(d)
+  else if (d.kind === 'pct') endPct(d, false)
   else document.body.classList.remove('dragging-room')
+}
+
+// ── Share bar (drag or click to set, 5% steps) ───────────────
+function startPct(bar, e) {
+  const [group, person] = bar.dataset.pctBar.split(':')
+  const m = state.groups[group]?.members.find(x => x.person === person)
+  if (!m) return
+  e.preventDefault()
+  bar.focus({ preventScroll: true })
+  drag = { kind: 'pct', bar, group, person, rect: bar.getBoundingClientRect(), start: m.pct, live: m.pct }
+  try { bar.setPointerCapture(e.pointerId) } catch { /* fine */ }
+  document.body.classList.add('dragging-pct')
+  bar.classList.add('is-dragging')
+  movePct(e)
+}
+function movePct(e) {
+  const { rect } = drag
+  const raw = ((e.clientX - rect.left) / Math.max(1, rect.width)) * 100
+  const pct = Math.max(5, Math.min(100, Math.round(raw / 5) * 5))
+  if (pct === drag.live) return
+  drag.live = pct
+  paintPct(drag.bar, drag.group, drag.person, pct)
+}
+/** Live preview without a re-render: the bar, its number, and the seat badge. */
+function paintPct(bar, group, person, pct) {
+  bar.style.setProperty('--p', pct)
+  bar.setAttribute('aria-valuenow', pct); bar.setAttribute('aria-valuetext', pct + '%')
+  const num = bar.querySelector('.pct-num'); if (num) num.textContent = pct + '%'
+  const badge = bar.closest('.seat')?.querySelector(`.pct-badge[data-pct="${group}:${person}"]`)
+  if (badge) badge.textContent = pct + '%'
+}
+function endPct(d, commit) {
+  document.body.classList.remove('dragging-pct')
+  d.bar.classList.remove('is-dragging')
+  if (commit && d.live !== d.start) {
+    snapshot()
+    setMembership(d.group, d.person, d.live)
+    afterChange()
+    const p = state.people[d.person], g = state.groups[d.group]
+    if (p && g) showToast(`${p.name}: ${d.live}% in ${g.name}`)
+    document.querySelector(`[data-pct-bar="${d.group}:${d.person}"]`)?.focus({ preventScroll: true })
+  } else if (!commit) {
+    paintPct(d.bar, d.group, d.person, d.start)
+  }
 }
 
 // ── People ───────────────────────────────────────────────────

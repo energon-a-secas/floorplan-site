@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://floorplan.neorgon.com/schema.json",
+  "title": "Floorplan document",
+  "description": "A team and group map: people, groups (with sub-groups), shared bands that span groups, and links between groups. The same tree is accepted as YAML or JSON. Members reference people by id (slug of the name), by name, or by a person listed nowhere (created on import with a warning).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": { "type": "string", "maxLength": 80 },
+    "notes": { "type": "string", "description": "Markdown shown above the board" },
+    "mode": { "enum": ["diagram", "building"], "default": "diagram" },
+    "cell": { "type": "integer", "minimum": 24, "maximum": 96, "default": 48, "description": "Building grid cell size in px" },
+    "profiles": {
+      "type": "object",
+      "description": "Named partial definitions reused through `extends`. Scalars override, members and owns concatenate. Profiles may extend profiles. No nested groups inside a profile.",
+      "additionalProperties": { "$ref": "#/$defs/partial" }
+    },
+    "people": { "type": "array", "items": { "oneOf": [{ "type": "string" }, { "$ref": "#/$defs/person" }] } },
+    "groups": { "type": "array", "items": { "$ref": "#/$defs/group" } },
+    "bands": { "type": "array", "description": "Shared spaces spanning several groups: a QA pool, an on-call rotation", "items": { "$ref": "#/$defs/band" } },
+    "shared": { "type": "array", "description": "Alias of bands", "items": { "$ref": "#/$defs/band" } },
+    "links": {
+      "type": "array",
+      "items": { "oneOf": [{ "$ref": "#/$defs/link" }, { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 3, "description": "[from, to, label?]" }] }
+    },
+    "layout": { "type": "object", "description": "Optional map of group id to rect, an alternative to inline layout", "additionalProperties": { "$ref": "#/$defs/rect" } }
+  },
+  "$defs": {
+    "hex": { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$" },
+    "extends": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }], "description": "Profile name(s), resolved left to right" },
+    "rect": {
+      "type": "object", "required": ["x", "y", "w", "h"], "additionalProperties": false,
+      "properties": { "x": { "type": "number", "minimum": 0 }, "y": { "type": "number", "minimum": 0 }, "w": { "type": "number", "minimum": 1 }, "h": { "type": "number", "minimum": 1 } },
+      "description": "Building grid cells; the grid is 24 columns wide"
+    },
+    "member": {
+      "oneOf": [
+        { "type": "string", "description": "person id, slug of the name, or the name; 100%" },
+        { "type": "object", "required": ["person"], "properties": { "person": { "type": "string" }, "pct": { "type": "integer", "minimum": 1, "maximum": 100 } }, "additionalProperties": false },
+        { "type": "object", "minProperties": 1, "maxProperties": 1, "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 100 }, "description": "Single-key shorthand: { maya-k: 50 }" }
+      ]
+    },
+    "person": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "name": { "type": "string" },
+        "location": { "type": "string" },
+        "role": { "type": "string" },
+        "color": { "$ref": "#/$defs/hex" },
+        "notes": { "type": "string", "description": "Markdown" },
+        "extends": { "$ref": "#/$defs/extends" }
+      },
+      "anyOf": [{ "required": ["name"] }, { "required": ["id"] }]
+    },
+    "groupBase": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "name": { "type": "string" },
+        "extends": { "$ref": "#/$defs/extends" },
+        "color": { "$ref": "#/$defs/hex" },
+        "notes": { "type": "string", "description": "Markdown" },
+        "capacity": { "type": "integer", "minimum": 0, "description": "Seats; open ones render as vacant desks, over-capacity is flagged" },
+        "owns": { "type": "array", "items": { "type": "string" }, "description": "Systems or areas; rendered as plaques" },
+        "members": { "type": "array", "items": { "$ref": "#/$defs/member" } },
+        "layout": { "$ref": "#/$defs/rect" }
+      }
+    },
+    "group": {
+      "allOf": [{ "$ref": "#/$defs/groupBase" }],
+      "properties": { "groups": { "type": "array", "items": { "$ref": "#/$defs/group" }, "description": "Sub-groups. A top-level group with sub-groups and no members of its own renders as a title band over its children in the building view" } },
+      "anyOf": [{ "required": ["name"] }, { "required": ["id"] }]
+    },
+    "band": {
+      "allOf": [{ "$ref": "#/$defs/groupBase" }],
+      "properties": { "spans": { "type": "array", "items": { "type": "string" }, "description": "Group or sub-group ids (or names) the band stretches across" } },
+      "anyOf": [{ "required": ["name"] }, { "required": ["id"] }]
+    },
+    "partial": {
+      "type": "object",
+      "description": "Any subset of person or group fields, plus extends",
+      "properties": {
+        "extends": { "$ref": "#/$defs/extends" },
+        "name": { "type": "string" }, "location": { "type": "string" }, "role": { "type": "string" },
+        "color": { "$ref": "#/$defs/hex" }, "notes": { "type": "string" }, "capacity": { "type": "integer", "minimum": 0 },
+        "owns": { "type": "array", "items": { "type": "string" } },
+        "members": { "type": "array", "items": { "$ref": "#/$defs/member" } },
+        "layout": { "$ref": "#/$defs/rect" }
+      },
+      "not": { "required": ["groups"] }
+    },
+    "link": {
+      "type": "object", "required": ["from", "to"], "additionalProperties": false,
+      "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "label": { "type": "string" }, "kind": { "enum": ["auto", "door", "corridor"], "default": "auto" } }
+    }
+  }
+}

@@ -32,8 +32,18 @@ export function seatHtml(group, m, { compact = false } = {}) {
   return `<div class="seat${compact ? ' seat--compact' : ''}${picked ? ' is-picked' : ''}${sel ? ' is-selected' : ''}" data-seat="${group.id}:${p.id}" data-drag="person" data-person="${p.id}" data-from="${group.id}" data-band="${band}" tabindex="0" role="button" aria-label="${escHtml(label)}" style="--seat-color:${escHtml(group.color)}" data-svg="box">
     ${faceHtml(p, group.color)}
     <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(p.name)}</span>${p.location ? `<span class="seat-loc" data-svg="text">${escHtml(p.location)}</span>` : ''}</span>
-    ${showPct ? `<button type="button" class="pct-badge" data-pct="${group.id}:${p.id}" data-band="${band}" title="Edit share" aria-label="Share ${m.pct}%, click to edit" data-svg="badge">${m.pct}%</button>` : ''}
+    ${showPct ? `<button type="button" class="pct-badge" data-pct="${group.id}:${p.id}" data-band="${band}" title="Type the share" aria-label="Share ${m.pct}%, click to type a value" data-svg="badge">${m.pct}%</button>` : ''}
+    ${pctBarHtml(group, p, m.pct, band)}
   </div>`
+}
+
+/**
+ * The draggable share bar: a segmented pixel bar, 5% steps, min 5. Drag or
+ * click sets it (dnd.js), arrows nudge it (events.js). Carries the same
+ * GROUP:PERSON key as the seat and the badge.
+ */
+export function pctBarHtml(group, p, pct, band, extra = '') {
+  return `<span class="pct-bar${extra ? ' ' + extra : ''}" data-pct-bar="${group.id}:${p.id}" role="slider" tabindex="0" aria-label="Share of ${escHtml(p.name)} in ${escHtml(group.name)}" aria-valuemin="5" aria-valuemax="100" aria-valuenow="${pct}" aria-valuetext="${pct}%" data-band="${band}" style="--p:${pct}" title="Drag to set the share (arrows nudge by 5)" data-svg="bar"><i class="pct-fill"></i><b class="pct-num">${pct}%</b></span>`
 }
 
 export function vacantSeatsHtml(group, n, { compact = false } = {}) {

@@ -10,11 +10,11 @@ import {
   setMembership, removeMembership, reorderGroup, setLayout, clearLayouts, setMode, resetTo, clearAll, membershipsOf,
 } from './state.js'
 import { render, renderBoard, renderRoster, renderDetail, renderToolbar, renderYaml, renderYamlMessages, markYamlInSync, afterChange } from './render.js'
-import { $, showToast, copyText, clamp } from './utils.js'
+import { $, showToast, copyText, clamp, debounce } from './utils.js'
 import { parseYaml } from './yaml.js'
 import { exampleById } from './examples.js'
 import { bindDnd, commitDrop } from './dnd.js'
-import { exportYamlFile, exportJsonFile, exportMarkdownFile, exportMermaidFile, copyShareLink, importFile, importText } from './export.js'
+import { exportYamlFile, exportJsonFile, exportMarkdownFile, exportMermaidFile, copyShareLink, copyPrompt, importFile, importText } from './export.js'
 import { exportSVG, exportPNG } from './image-export.js'
 
 export function bindEvents() {
@@ -33,9 +33,11 @@ export function bindEvents() {
   })
   ta?.addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); applyYaml() } })
   $('importFile')?.addEventListener('change', e => { const f = e.target.files?.[0]; if (f) importFile(f); e.target.value = '' })
-  $('scaleRange')?.addEventListener('input', e => { ui.scale = Number(e.target.value) || 1; renderBoard() })
+  $('scaleRange')?.addEventListener('input', e => { ui.scale = Number(e.target.value) || 1; ui.fit = false; renderToolbar(); renderBoard() })
   setupMenu('examplesBtn', 'examplesMenu')
   setupMenu('exportBtn', 'exportMenu')
+  // Fit follows the frame: iframes and window resizes re-scale the building
+  window.addEventListener('resize', debounce(() => { if (ui.fit && state.meta.mode === 'building') renderBoard() }, 150))
 }
 
 // ── Menus (.header-menu, toggled by the site; Esc/outside handled here) ──
@@ -69,7 +71,8 @@ function onClick(e) {
   const exp = t.closest('[data-export]')
   if (exp) { runExport(exp.dataset.export); return }
   const badge = t.closest('.pct-badge')
-  if (badge) { e.stopPropagation(); openPctEditor(badge); return }
+  if (badge) { e.stopPropagation(); if (!ui.readonly) openPctEditor(badge); return }
+  if (t.closest('[data-pct-bar]')) return   // the bar owns its pointer events (dnd.js)
 
   // carrying someone (keyboard pick-up) and clicking a target seats them
   const drop = t.closest('[data-drop]')
@@ -86,8 +89,10 @@ function onClick(e) {
   if (t.closest('.room--title')) { select('group', t.closest('.room--title').dataset.group); return }
 }
 
+const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'help', 'dialog-close', 'fit', 'share'])
 function runAction(action, el, e) {
   const id = el.dataset.id
+  if (ui.readonly && !VIEW_ACTIONS.has(action)) { showToast('Read-only view. Open it in Floorplan to edit'); return }
   switch (action) {
     case 'select-group': select('group', id); break
     case 'close-detail': ui.selection = null; renderDetail(); renderBoard(); renderRoster(); break
@@ -114,11 +119,13 @@ function runAction(action, el, e) {
     case 'clear': snapshot(); clearAll(); ui.selection = null; ui.picked = null; afterChange(); showToast('Board cleared. Cmd/Ctrl+Z brings it back'); break
     case 'toggle-avatars': ui.avatars = !ui.avatars; renderToolbar(); renderBoard(); renderRoster(); renderDetail(); break
     case 'visit': toggleVisit(); break
+    case 'fit': ui.fit = !ui.fit; renderToolbar(); renderBoard(); break
     case 'import-open': $('importDialog')?.showModal(); $('importText')?.focus(); break
     case 'import-close': $('importDialog')?.close(); break
     case 'import-apply': { const text = $('importText').value; if (importText(text)) { $('importDialog').close(); $('importText').value = '' } break }
     case 'import-file': $('importFile')?.click(); break
     case 'share': copyShareLink(); break
+    case 'prompt': copyPrompt(); break
     case 'help': $('helpDialog')?.showModal(); break
     case 'dialog-close': el.closest('dialog')?.close(); break
     default: break
@@ -234,6 +241,24 @@ function onKeydown(e) {
   if (typing) return
   if (e.key === '?' && !e.metaKey && !e.ctrlKey) { $('helpDialog')?.showModal(); return }
   const el = document.activeElement
+  if (el?.matches('[data-pct-bar]') && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
+    e.preventDefault()
+    if (ui.readonly) return
+    const [g, p] = el.dataset.pctBar.split(':')
+    const m = state.groups[g]?.members.find(x => x.person === p); if (!m) return
+    const step = e.shiftKey ? 10 : 5
+    let v = m.pct
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') v -= step
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') v += step
+    if (e.key === 'Home') v = 5
+    if (e.key === 'End') v = 100
+    v = clamp(v, 5, 100)
+    if (v === m.pct) return
+    snapshot(); setMembership(g, p, v); afterChange()
+    document.querySelector(`[data-pct-bar="${g}:${p}"]`)?.focus({ preventScroll: true })
+    return
+  }
+  if (ui.readonly) return
   if (e.key === 'Escape') {
     if (ui.picked) { ui.picked = null; renderBoard(); renderRoster(); return }
     if (ui.drawerOpen) { ui.drawerOpen = false; document.body.classList.remove('drawer-open'); return }
@@ -300,12 +325,14 @@ export function loadExample(id) {
 function runExport(kind) {
   switch (kind) {
     case 'yaml': exportYamlFile(); break
+    case 'prompt': copyPrompt(); break
     case 'json': exportJsonFile(); break
     case 'md': exportMarkdownFile(); break
     case 'mermaid': exportMermaidFile(); break
     case 'svg': exportSVG(); break
     case 'png': exportPNG(2); break
     case 'share': copyShareLink(); break
+    case 'prompt': copyPrompt(); break
     default: break
   }
 }

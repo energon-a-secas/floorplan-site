@@ -11,7 +11,7 @@
 import { state, ui, childrenOf } from './state.js'
 import { computeLayout } from './layout.js'
 import { escHtml } from './utils.js'
-import { seatHtml, vacantSeatsHtml, groupHeadHtml, faceHtml, capacityInfo } from './parts.js'
+import { seatHtml, vacantSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml } from './parts.js'
 import { totals } from './parts.js'
 
 export function renderBuilding() {
@@ -91,6 +91,7 @@ function straddleHtml(s) {
       ${faceHtml(p, ga.color)}
       <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(p.name)}</span></span>
       <span class="pct-pair"><button type="button" class="pct-badge" data-pct="${ga.id}:${p.id}" title="Share in ${escHtml(ga.name)}" data-svg="badge">${ma.pct}%</button><button type="button" class="pct-badge" data-pct="${gb.id}:${p.id}" title="Share in ${escHtml(gb.name)}" data-svg="badge">${mb.pct}%</button></span>
+      <span class="pct-bars">${pctBarHtml(ga, p, ma.pct, t.total > 100 ? 'over' : 'ok', 'pct-bar--a')}${pctBarHtml(gb, p, mb.pct, t.total > 100 ? 'over' : 'ok', 'pct-bar--b')}</span>
     </div>
   </div>`
 }

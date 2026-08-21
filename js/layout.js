@@ -20,11 +20,17 @@ export function isTitleGroup(g) {
   return g && g.kind === 'group' && g.parent === null && g.members.length === 0 && childrenOf(g.id).length > 0
 }
 
+// A compact seat is 1.55 x 1.6 cells (see building.css); rooms are sized so
+// whole seats fit: width from the seat count, height from the rows it takes.
+export const SEAT_W = 1.6, SEAT_H = 1.7
 function roomSize(g) {
   const own = g.members.length, kids = childrenOf(g.id).length
   const plaque = g.owns.length ? 1 : 0
-  if (kids) return { w: Math.min(COLS, Math.max(6, kids * 4)), h: 6 + (own ? 1 : 0) + plaque }
-  return { w: Math.min(10, Math.max(4, 3 + Math.ceil(own / 2))), h: 4 + (own > 6 ? 1 : 0) + plaque }
+  if (kids) return { w: Math.min(COLS, Math.max(6, kids * 4)), h: 7 + (own ? 2 : 0) + plaque }
+  const w = Math.min(10, Math.max(4, Math.ceil(Math.sqrt(Math.max(1, own)) * SEAT_W) + 1))
+  const perRow = Math.max(1, Math.floor((w - 0.4) / SEAT_W))
+  const rows = Math.max(1, Math.ceil(own / perRow))
+  return { w, h: Math.max(4, Math.ceil(1 + rows * SEAT_H + 0.3 + plaque)) }
 }
 
 /** The wall two rects share, if they touch along at least one cell. */
@@ -116,7 +122,7 @@ export function computeLayout() {
   // sub-rooms: partitions of the parent's body
   const partition = (g, rect, depth) => {
     const kids = childrenOf(g.id); if (!kids.length) return
-    const ownRows = g.members.length ? 1.5 : 0
+    const ownRows = g.members.length ? SEAT_H + 0.2 : 0
     const plaque = g.owns.length && depth === 0 ? 1 : 0
     const body = { x: rect.x, y: rect.y + 1 + ownRows, w: rect.w, h: Math.max(1, rect.h - 1 - ownRows - plaque) }
     const n = kids.length
@@ -145,7 +151,7 @@ export function computeLayout() {
         y = Math.max(0, ...Object.values(rects).filter(r => r.kind !== 'sub').map(r => r.y + r.h))
       }
       for (const d of done) if (d.x < right - EPS && x < d.x + d.w - EPS) y = Math.max(y, d.y + d.h)
-      rects[b.id] = { x, y, w: right - x, h: b.members.length ? 2.5 : 1, kind: 'band', depth: 0, auto: true }
+      rects[b.id] = { x, y, w: right - x, h: b.members.length ? 1 + SEAT_H + 0.3 : 1, kind: 'band', depth: 0, auto: true }
       done.push(rects[b.id])
     }
     return done

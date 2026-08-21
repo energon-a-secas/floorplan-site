@@ -40,6 +40,14 @@ export function buildSvg() {
       if (src) parts.push(`<image href="${escHtml(src)}" x="${f(x)}" y="${f(y)}" width="${f(r.width)}" height="${f(r.height)}" preserveAspectRatio="none" style="image-rendering:pixelated;image-rendering:crisp-edges"/>`)
       return
     }
+    if (role === 'bar') {
+      const pct = num(el.style.getPropertyValue('--p')) || 100
+      const fillEl = el.querySelector('.pct-fill')
+      const fill = fillEl ? getComputedStyle(fillEl).backgroundColor : '#64748b'
+      parts.push(`<rect x="${f(x)}" y="${f(y)}" width="${f(r.width)}" height="${f(r.height)}" fill="${cs.backgroundColor}" stroke="${cs.borderTopColor}" stroke-width="1"/>`)
+      parts.push(`<rect x="${f(x)}" y="${f(y)}" width="${f(r.width * pct / 100)}" height="${f(r.height)}" fill="${fill}"/>`)
+      return
+    }
     if (role === 'disc') {
       parts.push(`<circle cx="${f(x + r.width / 2)}" cy="${f(y + r.height / 2)}" r="${f(r.width / 2)}" fill="${cs.backgroundColor}"/>`)
       pushText(parts, el, cs, x, y, r, { center: true })

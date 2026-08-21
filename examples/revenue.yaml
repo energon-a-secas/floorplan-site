@@ -59,32 +59,32 @@ groups:
   - name: Platform Enablement
     color: "#fbbf24"
     owns: [Build Tooling]
-    layout: { x: 0, y: 10, w: 11, h: 4 }
+    layout: { x: 0, y: 11, w: 11, h: 4 }
     members: [ines-moreau]
   - name: Data and Reporting
     color: "#34d399"
     owns: [Warehouse, Dashboards]
-    layout: { x: 12, y: 10, w: 10, h: 4 }
+    layout: { x: 12, y: 11, w: 10, h: 4 }
     members: [bakari-otieno]
   - name: Contracts and Availability
     color: "#94a3b8"
-    layout: { x: 22, y: 10, w: 2, h: 4 }
+    layout: { x: 22, y: 11, w: 2, h: 4 }
 
 bands:
   - name: On-call West
     extends: oncall
     spans: [next-gen, intake]
-    layout: { x: 0, y: 7, w: 12, h: 2 }
+    layout: { x: 0, y: 7, w: 12, h: 3 }
     members: [{ person: ezra-nakamura, pct: 20 }, { person: amara-diallo, pct: 20 }]
   - name: On-call East
     extends: oncall
     spans: [ledger, royalties]
-    layout: { x: 12, y: 7, w: 12, h: 2 }
+    layout: { x: 12, y: 7, w: 12, h: 3 }
     members: [{ person: caleb-stone, pct: 20 }, { person: mateus-ferreira, pct: 20 }, { person: riya-kapoor, pct: 30 }]
   - name: Shared Efforts
     color: "#38bdf8"
     spans: [next-gen, partner-payouts, royalties]
-    layout: { x: 0, y: 9, w: 24, h: 1 }
+    layout: { x: 0, y: 10, w: 24, h: 1 }
 
 links:
   - { from: next-gen, to: partner-payouts }

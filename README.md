@@ -39,14 +39,16 @@ Floorplan builds team maps. Drag people from a roster into groups and sub-groups
 ## Features
 
 - **Drag and drop** -- roster to group seats at 100%, group to group moves, Alt-drop splits the time evenly, drop on the roster unassigns. Keyboard carry (Enter to pick up, Enter on a group to seat) for the same moves
-- **Percentages that add up** -- click any `NN%` badge to edit it; the roster shows each person's total and the Insights drawer flags anyone over or under 100%
+- **Percentages that add up** -- every seat has a segmented share bar: drag it in 5% steps, nudge with the arrow keys, or click the `NN%` badge to type; the roster shows each person's total and the Insights drawer flags anyone over or under 100%
 - **Groups, sub-groups, shared spaces** -- bands span the groups they name; `capacity` draws vacant desks for open headcount; `owns` renders as plaques
 - **Diagram view** -- nested boxes, columns per group, bands as strips across the columns they cover
 - **Building view** -- rooms on a 24-column grid, auto-packed or placed with `layout: {x, y, w, h}`; doors where linked rooms touch, corridors where they do not; a person split across two touching rooms sits on the shared wall; drag rooms by the grip, resize from the corner
 - **Visit mode** -- walk a pixel avatar through the building with WASD or the arrows; walls block, doors let you through, standing next to a desk shows that person's card
 - **YAML with reuse** -- `profiles:` + `extends:` deep-merge (scalars override, members and owns concatenate); anchors and `<<:` merges work too; visual edits regenerate the YAML without flattening `extends`
 - **Markdown** -- notes on people, groups and the document; paste a markdown outline (`## Group`, `- Name (50%) @Location`) to import; the Markdown export writes the same syntax back
-- **Exports** -- YAML, JSON, Markdown, Mermaid, SVG, PNG (2x), and a `#d=` share link that carries the document; `?src=<url>` loads a hosted file
+- **Exports** -- YAML, JSON, Markdown, Mermaid, SVG, PNG (2x), a `#d=` share link that carries the document, and "Copy as prompt for Claude"; `?src=<url>` loads a hosted file
+- **Embeddable** -- `?embed=1&mode=building#d=...` in an iframe shows just the board (never touches the visitor's localStorage); `readonly=1` locks it; `fit=1` scales the building to the frame
+- **Agent-ready** -- `llms.txt` carries the schema, the rules that trip generated documents, the link recipe, and `schema.json` is the same tree as a JSON Schema
 - **Two examples** -- a nested team chart and an office building with explicit layout, bands and links; every name is fictional
 - **Local only** -- localStorage, no account, no server; 40 steps of undo that survive Clear and example loads
 
@@ -73,7 +75,15 @@ links:
   - { from: team-kestrel, to: team-lantern, label: shared backlog }
 ```
 
-The full schema, the link contract and the import formats are in [`llms.txt`](llms.txt). The two bundled documents live in [`examples/`](examples/).
+The full schema, the link contract, embedding and the import formats are in [`llms.txt`](llms.txt); [`schema.json`](schema.json) is the JSON Schema. The two bundled documents live in [`examples/`](examples/).
+
+## Embed it
+
+```html
+<iframe src="https://floorplan.neorgon.com/?embed=1&mode=building#d=PAYLOAD" width="100%" height="640" style="border:0" title="Team map"></iframe>
+```
+
+Get `PAYLOAD` from **Export → Copy share link** (everything after `#d=`), or point `?src=` at a hosted YAML file instead of using the hash.
 
 ---
 
@@ -102,7 +112,8 @@ The only dependency is js-yaml 4.1.0 from a CDN, pinned with SRI; everything els
 ```
 floorplan-site/
 ├── index.html              # HTML shell: header kit, roster, board, YAML panel, drawers, dialogs
-├── llms.txt                # schema + link contract for agents
+├── llms.txt                # schema, link contract, embedding, generation recipe for agents
+├── schema.json             # the document tree as a JSON Schema
 ├── examples/               # the two bundled documents as files (?src= and llms.txt point here)
 ├── css/
 │   ├── style.css           # app shell, roster, seats, panels, sheets, drawer

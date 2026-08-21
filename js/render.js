@@ -65,6 +65,9 @@ export function renderToolbar() {
   $('avatarsToggle')?.setAttribute('aria-pressed', String(ui.avatars))
   const scale = $('scaleRange'); if (scale) scale.value = String(ui.scale)
   $('visitBtn')?.setAttribute('aria-pressed', String(ui.visiting))
+  $('fitBtn')?.setAttribute('aria-pressed', String(ui.fit))
+  document.body.classList.toggle('embed', ui.embed)
+  document.body.classList.toggle('readonly', ui.readonly)
   const notes = $('docNotes')
   if (notes) {
     const has = !!state.meta.notes.trim()
@@ -120,6 +123,10 @@ export function renderBoard() {
     loadPixelFont()
     const { html, layout } = renderBuilding()
     lastLayout = layout
+    if (ui.fit) {
+      const avail = Math.max(200, board.clientWidth - 48)
+      ui.scale = Math.max(0.4, Math.min(1.4, Math.floor((avail / (layout.cols * state.meta.cell)) * 20) / 20))
+    }
     board.style.setProperty('--cell', `${Math.round(state.meta.cell * ui.scale)}px`)
     board.innerHTML = html
   } else {

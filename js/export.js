@@ -24,6 +24,24 @@ export function exportMermaidFile() {
   copyText(text).then(ok => showToast(ok ? 'Mermaid downloaded and copied' : 'Mermaid downloaded'))
 }
 
+/** The document wrapped as a prompt for an assistant: paste it, state the change, get YAML back. */
+export function copyPrompt() {
+  const { text } = emitYaml(state)
+  const prompt = [
+    'Here is a Floorplan team map as YAML. Schema, reuse rules and link format: https://floorplan.neorgon.com/llms.txt',
+    '',
+    'Task: <describe the change, e.g. "move Leon fully to Team Lantern and add a 3-person Data squad under Revenue Platform">',
+    '',
+    'Return the complete updated YAML in one code block. Keep every existing id, keep profiles and extends, use pct only for splits,',
+    'and end with a https://floorplan.neorgon.com/#d=<base64url of the YAML> link so I can open it.',
+    '',
+    '```yaml',
+    text.trimEnd(),
+    '```',
+  ].join('\n')
+  copyText(prompt).then(ok => showToast(ok ? 'Prompt copied: paste it into Claude with your change' : 'Could not copy: clipboard blocked'))
+}
+
 // ── Mermaid ──────────────────────────────────────────────────
 const mid = s => 'n_' + String(s).replace(/[^a-zA-Z0-9]/g, '_')
 const q = s => String(s).replace(/"/g, '#quot;')

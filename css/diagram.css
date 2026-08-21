@@ -33,11 +33,10 @@
 .gbox > .g-head::before { content: ''; width: 9px; height: 9px; border-radius: 2px; background: var(--g); flex-shrink: 0; }
 .gbox.depth-1 > .g-head::before, .gbox.depth-2 > .g-head::before, .gbox.depth-3 > .g-head::before { display: none; }
 
-.g-members { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+.g-members { display: grid; grid-template-columns: repeat(auto-fill, 176px); gap: 6px; align-content: flex-start; justify-content: start; }
+.gbox .seat { width: 176px; }
 .g-children { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
 .g-children > .gbox { flex: 1 1 150px; }
-.gbox .seat { min-width: 148px; flex: 0 1 auto; }
-.gbox.depth-1 .seat, .gbox.depth-2 .seat { min-width: 136px; }
 .gbox .g-owns { margin-top: auto; padding-top: 4px; }
 .gbox .g-empty { flex: 1; display: grid; place-items: center; min-height: 56px; }
 

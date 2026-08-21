@@ -93,6 +93,7 @@
             <button type="button" role="menuitem" data-export="svg">Download SVG</button>
             <button type="button" role="menuitem" data-export="png">Download PNG (2x)</button>
             <button type="button" role="menuitem" data-export="share">Copy share link</button>
+            <button type="button" role="menuitem" data-export="prompt">Copy as prompt for Claude</button>
           </div>
         </div>
         <button type="button" class="nav-link nav-link--badge" id="insightToggle" data-action="toggle-insights" aria-label="Toggle insights">
@@ -133,6 +134,7 @@
             <button type="button" class="btn btn--ghost btn--sm" id="avatarsToggle" data-action="toggle-avatars" aria-pressed="true" title="Pixel avatars or initials">Avatars</button>
             <span class="only-building">
               <label class="scale-field"><span>Zoom</span><input type="range" id="scaleRange" min="0.6" max="1.6" step="0.1" value="1" aria-label="Zoom"></label>
+              <button type="button" class="btn btn--ghost btn--sm" id="fitBtn" data-action="fit" aria-pressed="false" title="Scale the building to the board width">Fit</button>
               <button type="button" class="btn btn--ghost btn--sm" data-action="relayout" title="Clear every room's saved position and let the packer place them">Auto layout</button>
               <button type="button" class="btn btn--ghost btn--sm btn--visit" id="visitBtn" data-action="visit" aria-pressed="false" title="Walk the office with WASD or the arrows">Visit</button>
             </span>
@@ -192,11 +194,12 @@
     <header class="modal__header"><h2 id="helpTitle">Floorplan in a minute</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close">×</button></header>
     <div class="modal__body help-body">
       <p><strong>Groups</strong> hold people. A group inside a group is a sub-group. A <strong>shared space</strong> (band) spans several groups: a QA pool, an on-call rotation, shared efforts.</p>
-      <p><strong>Percentages.</strong> Drop with <kbd>Alt</kbd> held to split a person between two groups. Click any <em>NN%</em> badge to edit it. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
+      <p><strong>Percentages.</strong> Drop with <kbd>Alt</kbd> held to split a person between two groups. Every seat has a share bar: drag it (5% steps), or focus it and nudge with the arrows; click the <em>NN%</em> badge to type a value. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
       <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner. <strong>Visit</strong> lets you walk it.</p>
       <p><strong>YAML</strong> is the document. Edit it in the side panel and Apply (<kbd>Cmd/Ctrl+Enter</kbd>). Define <code>profiles:</code> once and <code>extends:</code> them from groups or people, gitlabform style. Share links carry the whole document.</p>
       <dl class="keys">
         <dt><kbd>Enter</kbd> / <kbd>Space</kbd></dt><dd>pick up the focused person; <kbd>Enter</kbd> on a group seats them (<kbd>Alt+Enter</kbd> splits)</dd>
+        <dt>← → on a share bar</dt><dd>nudge the share by 5 (<kbd>Shift</kbd> for 10); <kbd>Home</kbd>/<kbd>End</kbd> jump</dd>
         <dt><kbd>Delete</kbd></dt><dd>remove the focused seat from its group</dd>
         <dt><kbd>Esc</kbd></dt><dd>drop what you carry, close panels, leave Visit mode</dd>
         <dt><kbd>Cmd/Ctrl+Z</kbd></dt><dd>undo (40 steps, includes Clear and loading an example); <kbd>Shift</kbd> redoes</dd>
@@ -206,6 +209,8 @@
     </div>
     <footer class="modal__footer"><button type="button" class="btn btn--primary" data-action="dialog-close">Got it</button></footer>
   </dialog>
+
+  <a class="embed-link" id="embedLink" href="./" target="_blank" rel="noopener" hidden>Open in Floorplan ↗</a>
 
   <footer class="neo-footer" data-footer-mode="app">
     Everything stays in your browser: the document lives in localStorage and in the links you choose to share.

@@ -8,7 +8,8 @@
 
 ## Files for agents
 
-- [This file](https://floorplan.neorgon.com/llms.txt): the YAML schema, reuse rules, link contract, and import/export formats
+- [This file](https://floorplan.neorgon.com/llms.txt): the YAML schema, reuse rules, link contract, import/export formats, embedding, and how to generate a document
+- [JSON Schema](https://floorplan.neorgon.com/schema.json): the same document tree as a JSON Schema (draft 2020-12); validate generated YAML or JSON against it before handing over a link
 - [Example A, nested team chart](https://floorplan.neorgon.com/examples/atlas.yaml): two delivery teams, a shared QA band, one person split 50/50, profiles for groups and people
 - [Example B, office building](https://floorplan.neorgon.com/examples/revenue.yaml): explicit grid layout, a spanning title band, partitioned rooms, two on-call bands, owns plaques, doors and a corridor
 - [Source](https://github.com/energon-a-secas/floorplan-site): `js/schema.js` is the validator; `js/layout.js` is the building packer
@@ -19,6 +20,34 @@
 - `https://floorplan.neorgon.com/?src=<https url>`: the app fetches the YAML from that URL (a raw gist, a GitHub Pages file, any https host that allows CORS). Right for big or changing documents.
 
 The same contract runs on Presentation Sage (`#d=` / `?src=`) and Proctor (`#t=` / `?src=`), so an agent that learned one tool can drive the others.
+
+## Generating a document with an LLM (Claude, or any assistant)
+
+The shortest path from a description of a team to a picture someone can open:
+
+1. Write the document as YAML (below) or JSON (same tree, see schema.json). Keep it small: names, groups, sub-groups, shares.
+2. Check the rules that trip generated documents: a member written as a bare lowercase id (`maya-k`) must exist in `people:` or in another group (use the full name `Maya K` and it is created); `pct` only for splits (100 is the default); `spans:` and `links:` reference group ids, which are the slug of the name (`Team Kestrel` -> `team-kestrel`) unless an `id:` is given; a top-level group with `groups:` and no `members:` becomes a title band in the building view; `layout` is optional, the packer places rooms without it.
+3. Hand it over as a link: base64url the UTF-8 YAML and append it to `https://floorplan.neorgon.com/#d=`.
+   - Python: `import base64; print("https://floorplan.neorgon.com/#d=" + base64.urlsafe_b64encode(yaml_text.encode()).decode().rstrip("="))`
+   - Node: `'https://floorplan.neorgon.com/#d=' + Buffer.from(yamlText, 'utf8').toString('base64url')`
+   - Or host the YAML (gist, repo) and send `https://floorplan.neorgon.com/?src=<https url>`.
+4. For a picture in a page, wrap the link in an iframe (see Embedding). The reader can switch between Diagram and Building, drag people, and export SVG/PNG themselves.
+
+A prompt that works: "Produce a Floorplan YAML document (schema: https://floorplan.neorgon.com/llms.txt) for this org: <describe teams, people, splits, shared pools>. Use profiles for repeated settings. Return the YAML in one code block and a #d= link." The app's Export menu has **Copy as prompt for Claude**, which wraps the current document in that shape so a change can be described in one sentence.
+
+## Embedding (iframe)
+
+The app runs inside an iframe; nothing is written to the visitor's localStorage in embed mode, so an embedded map never clobbers their own document.
+
+```html
+<iframe src="https://floorplan.neorgon.com/?embed=1&mode=building#d=<payload>"
+        width="100%" height="640" loading="lazy" style="border:0;border-radius:8px" title="Team map"></iframe>
+```
+
+- `embed=1`: hides header, roster, toolbar, YAML panel, footer; the board fills the frame; a small "Open in Floorplan" link sits in the corner. Combine with `#d=` or `?src=`; with neither, the Atlas example shows.
+- `embed=readonly` (or `readonly=1`): no dragging, no edits, Insights and the detail sheet still work.
+- `mode=diagram|building`: overrides the document's `mode` for this view only.
+- `fit=1`: scales the building to the frame width (on by default in embed mode).
 
 ## Two views of one document
 
@@ -68,7 +97,7 @@ links:                        # doors (adjacent rooms) or corridors (apart)
   - [platform-enablement, data-and-reporting]
 ```
 
-Percentages: a person's shares across all groups and bands add up; the roster shows the total and the Insights drawer flags anyone over 100% (and, softly, under). A share of 100 is the default; write `pct` only for splits.
+Percentages: a person's shares across all groups and bands add up; the roster shows the total and the Insights drawer flags anyone over 100% (and, softly, under). A share of 100 is the default; write `pct` only for splits. In the app every seat carries a share bar (drag it in 5% steps, arrow keys nudge it, the badge accepts a typed value).
 
 ## Reuse: profiles and extends
 

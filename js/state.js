@@ -29,8 +29,11 @@ export const ui = {
   errors: [],
   warnings: [],
   scale: 1,
+  fit: false,         // building view: scale to the board width
   avatars: true,
   visiting: false,
+  embed: false,       // ?embed=1: chrome hidden, nothing written to localStorage
+  readonly: false,    // ?readonly=1: look, do not touch
 }
 
 // ── Replace / clear ──────────────────────────────────────────
@@ -185,6 +188,7 @@ export function removeLink(id) { state.links = state.links.filter(l => l.id !== 
 
 // ── Persistence ──────────────────────────────────────────────
 export function saveState() {
+  if (ui.embed) return   // an embedded copy never overwrites the visitor's own document
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, doc: modelToDoc(state).doc, savedAt: Date.now() }))
   } catch { /* quota or private mode: the session still works */ }
