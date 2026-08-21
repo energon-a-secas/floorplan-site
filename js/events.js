@@ -162,7 +162,7 @@ function runAction(action, el, e) {
     case 'visit': toggleVisit(); break
     case 'use-my-character': {
       const mine = myCharacter(); const pid = ui.selection?.type === 'person' ? ui.selection.id : null
-      if (!mine || !pid) { showToast('No character in your Neorgon cookie yet: make one in Paperdoll'); break }
+      if (!mine || !pid) { showToast('No character in your Neorgon cookie yet: make one in Pixeldoll'); break }
       snapshot(); updatePerson(pid, { avatar: { code: specToCode(mine) } }); afterChange(); showToast('Your character is on this person')
       break
     }
@@ -313,7 +313,7 @@ function onChange(e) {
     const v = t.value.trim()
     if (!v) { snapshot(); updatePerson(t.dataset.avCode, { avatar: null }); afterChange(); return }
     const spec = codeToSpec(v)
-    if (!spec) { showToast('That is not a Paperdoll code or link'); return }
+    if (!spec) { showToast('That is not a Pixeldoll code or link'); return }
     snapshot(); updatePerson(t.dataset.avCode, { avatar: { code: specToCode(spec) } }); afterChange(); showToast('Character applied')
     return
   }

@@ -378,10 +378,10 @@ export function renderChanges() {
 
 
 // ── Avatar picker (person sheet) ─────────────────────────────
-// Presets and a few knobs live here; the full wardrobe is Paperdoll's job.
-// A character arrives from Paperdoll through the fleet cookie ("Use my
+// Presets and a few knobs live here; the full wardrobe is Pixeldoll's job.
+// A character arrives from Pixeldoll through the fleet cookie ("Use my
 // character") or as a pasted neoav1 code, and leaves through the link.
-const PAPERDOLL = 'https://paperdoll.neorgon.com/'
+const PIXELDOLL = 'https://pixeldoll.neorgon.com/'
 function avatarPicker(p, shirt) {
   const cur = p.avatar || null
   const spec = avatarSpec(p.name, cur, shirt)
@@ -389,14 +389,14 @@ function avatarPicker(p, shirt) {
   const presets = PRESETS.map(pr => `<button type="button" class="av-preset${activePreset === pr.id ? ' is-active' : ''}" data-preset="${pr.id}" title="${escHtml(pr.name)}" aria-label="${escHtml(pr.name)}"><img src="${avatarDataUrl(p.name, pr.spec, shirt)}" width="32" height="32" alt="" class="px-avatar"></button>`).join('')
   const mine = myCharacter()
   const code = specToCode(spec)
-  const designHref = `${PAPERDOLL}#c=${encodeURIComponent(code)}&name=${encodeURIComponent(p.name)}`
+  const designHref = `${PIXELDOLL}#c=${encodeURIComponent(code)}&name=${encodeURIComponent(p.name)}`
   return `<fieldset class="sheet-field av-fieldset"><legend>Avatar</legend>
     <div class="av-grid">${presets}</div>
     <div class="av-row av-row--actions">
-      ${mine ? `<button type="button" class="btn btn--secondary btn--sm av-mine" data-action="use-my-character" title="The character saved in your Neorgon cookie"><img src="${spriteDataUrl(mine, 1)}" width="24" height="24" alt="" class="px-avatar"> Use my character</button>` : `<a class="btn btn--ghost btn--sm" href="${PAPERDOLL}" target="_blank" rel="noopener">Make my character in Paperdoll ↗</a>`}
-      <a class="btn btn--ghost btn--sm" href="${designHref}" target="_blank" rel="noopener" title="Open this look in Paperdoll and fine-tune it">Design in Paperdoll ↗</a>
+      ${mine ? `<button type="button" class="btn btn--secondary btn--sm av-mine" data-action="use-my-character" title="The character saved in your Neorgon cookie"><img src="${spriteDataUrl(mine, 1)}" width="24" height="24" alt="" class="px-avatar"> Use my character</button>` : `<a class="btn btn--ghost btn--sm" href="${PIXELDOLL}" target="_blank" rel="noopener">Make my character in Pixeldoll ↗</a>`}
+      <a class="btn btn--ghost btn--sm" href="${designHref}" target="_blank" rel="noopener" title="Open this look in Pixeldoll and fine-tune it">Design in Pixeldoll ↗</a>
     </div>
-    <label class="sheet-field"><span>Paperdoll code (paste to apply)</span><input type="text" id="avatarCode" data-av-code="${p.id}" value="${cur?.code ? escHtml(cur.code) : ''}" placeholder="neoav1:… or a paperdoll.neorgon.com link" spellcheck="false"></label>
+    <label class="sheet-field"><span>Pixeldoll code (paste to apply)</span><input type="text" id="avatarCode" data-av-code="${p.id}" value="${cur?.code ? escHtml(cur.code) : ''}" placeholder="neoav1:… or a pixeldoll.neorgon.com link" spellcheck="false"></label>
     <div class="av-row"><span>Shirt</span><input type="color" data-av="shirt" value="${escHtml(spec.shirt || shirt)}" aria-label="Shirt colour"> <button type="button" class="btn btn--ghost btn--sm" data-av="shirt" data-value="">Group colour</button>${cur ? ` <button type="button" class="btn btn--ghost btn--sm" data-preset="seeded">Reset to seeded</button>` : ''}</div>
   </fieldset>`
 }
