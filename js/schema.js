@@ -17,10 +17,14 @@ import { slug, isHex, colorAt } from './utils.js'
 export const SCHEMA_VERSION = 1
 export const MODES = ['diagram', 'building']
 export const DEFAULT_CELL = 48
+export const DISPLAY_DEFAULTS = { align: 'start', shares: 'bars', placeholder: 'desk', avatars: 'pixel', locations: true, sort: 'manual' }
+export const DISPLAY_OPTIONS = { align: ['start', 'center'], shares: ['bars', 'badges', 'hidden'], placeholder: ['desk', 'cat', 'dog', 'none'], avatars: ['pixel', 'initials'], sort: ['manual', 'name', 'share'] }
+const AVATAR_KEYS = ['preset', 'kind', 'hair', 'hairColor', 'skin', 'coat', 'glasses', 'beard', 'item', 'shirt']
+const AVATAR_KINDS = ['person', 'cat', 'dog', 'robot']
 
 export function emptyModel() {
   return {
-    meta: { title: '', notes: '', mode: 'diagram', cell: DEFAULT_CELL },
+    meta: { title: '', notes: '', mode: 'diagram', cell: DEFAULT_CELL, display: { ...DISPLAY_DEFAULTS } },
     profiles: {},
     people: {},     // id -> { id, name, location, role, color, notes, extends: [] }
     groups: {},     // id -> { id, kind, name, parent, spans, color, notes, capacity, owns, extends, order, members, layout }
@@ -111,6 +115,17 @@ function readLayout(v, warnings, ctx) {
   return { x, y, w, h }
 }
 
+/** avatar: "cat" | "preset-id" | { kind, hair, hairColor, skin, coat, glasses, beard, item, shirt, preset } -> normalized object or null */
+export function readAvatar(v) {
+  if (v == null) return null
+  if (typeof v === 'string') { const t = v.trim(); if (!t) return null; return AVATAR_KINDS.includes(t) ? { kind: t } : { preset: t } }
+  if (!isObj(v)) return null
+  const out = {}
+  for (const k of AVATAR_KEYS) if (v[k] !== undefined && v[k] !== null && v[k] !== '') out[k] = typeof v[k] === 'boolean' || typeof v[k] === 'number' ? v[k] : str(v[k])
+  if (out.kind && !AVATAR_KINDS.includes(out.kind)) delete out.kind
+  return Object.keys(out).length ? out : null
+}
+
 function uniqueId(base, taken) {
   let id = base || 'item', n = 2
   while (taken.has(id)) id = `${base}-${n++}`
@@ -133,6 +148,10 @@ export function normalizeDoc(raw) {
   model.meta.mode = MODES.includes(raw.mode) ? raw.mode : 'diagram'
   const cell = Number(raw.cell)
   model.meta.cell = Number.isFinite(cell) ? Math.min(96, Math.max(24, Math.round(cell))) : DEFAULT_CELL
+  if (isObj(raw.display)) {
+    for (const [k, opts] of Object.entries(DISPLAY_OPTIONS)) if (opts.includes(raw.display[k])) model.meta.display[k] = raw.display[k]
+    if (typeof raw.display.locations === 'boolean') model.meta.display.locations = raw.display.locations
+  }
 
   // profiles (kept verbatim)
   if (raw.profiles != null && !isObj(raw.profiles)) errors.push('profiles must be a mapping of name -> partial definition')
@@ -161,6 +180,7 @@ export function normalizeDoc(raw) {
       role: str(merged.role).trim(),
       color: isHex(merged.color) ? merged.color : '',
       notes: str(merged.notes),
+      avatar: readAvatar(merged.avatar),
       extends: ext,
     }
   })
@@ -221,7 +241,7 @@ export function normalizeDoc(raw) {
           continue
         }
         const id = uniqueId(slug(r.ref), personIds)
-        p = model.people[id] = { id, name: r.ref, location: '', role: '', color: '', notes: '', extends: [] }
+        p = model.people[id] = { id, name: r.ref, location: '', role: '', color: '', notes: '', avatar: null, extends: [] }
         warnings.push(`Group "${g.name}": created person "${r.ref}" from the members list`)
       }
       if (seen.has(p.id)) continue
@@ -302,6 +322,9 @@ export function modelToDoc(model) {
   if (model.meta.notes) doc.notes = model.meta.notes
   doc.mode = model.meta.mode
   if (model.meta.cell !== DEFAULT_CELL) doc.cell = model.meta.cell
+  const disp = {}
+  for (const [k, dv] of Object.entries(DISPLAY_DEFAULTS)) if (model.meta.display?.[k] !== undefined && model.meta.display[k] !== dv) disp[k] = model.meta.display[k]
+  if (Object.keys(disp).length) doc.display = disp
   if (Object.keys(model.profiles).length) doc.profiles = structuredClone(model.profiles)
 
   doc.people = Object.values(model.people).map(p => personToDoc(model, p))
@@ -330,6 +353,10 @@ function personToDoc(model, p) {
   if (p.extends.length) o.extends = p.extends.length === 1 ? p.extends[0] : [...p.extends]
   for (const k of ['location', 'role', 'color', 'notes']) {
     if (p[k] && p[k] !== str(base[k])) o[k] = p[k]
+  }
+  if (p.avatar && JSON.stringify(p.avatar) !== JSON.stringify(readAvatar(base.avatar))) {
+    const keys = Object.keys(p.avatar)
+    o.avatar = keys.length === 1 && (keys[0] === 'kind' || keys[0] === 'preset') ? p.avatar[keys[0]] : { ...p.avatar }
   }
   const keys = Object.keys(o)
   return keys.length === 1 && keys[0] === 'name' ? p.name : o

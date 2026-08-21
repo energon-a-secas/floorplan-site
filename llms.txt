@@ -66,10 +66,22 @@ profiles:                     # optional: partial definitions to reuse (gitlabfo
   delivery: { color: "#60a5fa", capacity: 6, notes: "Delivery team." }
   remote:   { location: Remote }
 
+display:                      # optional view options, saved with the document
+  align: start                # start | center   (seats inside a box)
+  shares: bars                # bars | badges | hidden
+  placeholder: desk           # desk | cat | dog | none   (how an open seat looks)
+  avatars: pixel              # pixel | initials
+  sort: manual                # manual | name | share
+  locations: true
+
 people:                       # optional: a member named in a group but not listed here is created
   - Maya K                    # bare name: id becomes maya-k
   - { name: Leon Varga, location: Hungary, role: Developer, notes: "markdown" }
   - { id: ani, name: Anjali Mehta, extends: remote }
+  - { name: Rex, role: Office dog, avatar: dog }                       # avatar: person | cat | dog | robot, or a preset id
+  - { name: Sam O, avatar: { kind: person, hair: cap, glasses: true, item: laptop, shirt: "#f59e0b" } }
+  # avatar fields: kind, preset (classic glasses cap beard long headset laptop coffee tophat cat dog robot),
+  # hair (flat tall side long cap), hairColor, skin, coat (cats/dogs), glasses, beard, item (none laptop coffee headset hat), shirt (hex)
 
 groups:                       # top-level groups; each may nest `groups:`
   - name: Team Kestrel

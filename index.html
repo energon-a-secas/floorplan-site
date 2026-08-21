@@ -132,7 +132,37 @@
             <button type="button" class="btn btn--ghost btn--sm btn--icon" id="undoBtn" data-action="undo" aria-label="Undo" title="Undo (Cmd/Ctrl+Z)">↶</button>
             <button type="button" class="btn btn--ghost btn--sm btn--icon" id="redoBtn" data-action="redo" aria-label="Redo" title="Redo (Shift+Cmd/Ctrl+Z)">↷</button>
             <button type="button" class="btn btn--ghost btn--sm btn--versions" id="versionsBtn" data-action="toggle-versions" aria-pressed="false" title="Dated snapshots of this document: preview, restore, compare">Versions <span class="mini-badge" id="versionsCount" hidden>0</span></button>
-            <button type="button" class="btn btn--ghost btn--sm" id="avatarsToggle" data-action="toggle-avatars" aria-pressed="true" title="Pixel avatars or initials">Avatars</button>
+            <div class="menu-wrap">
+              <button type="button" class="btn btn--ghost btn--sm" id="displayBtn" aria-haspopup="menu" aria-expanded="false" title="How seats are drawn: alignment, shares, open seats, avatars, order">Display ▾</button>
+              <div class="header-menu display-menu" id="displayMenu" role="menu" aria-label="Display options">
+                <fieldset><legend>Seats in a box</legend>
+                  <label><input type="radio" name="align" value="start"> Align to the start</label>
+                  <label><input type="radio" name="align" value="center"> Center</label>
+                </fieldset>
+                <fieldset><legend>Shares</legend>
+                  <label><input type="radio" name="shares" value="bars"> Bars and badges</label>
+                  <label><input type="radio" name="shares" value="badges"> Badges only</label>
+                  <label><input type="radio" name="shares" value="hidden"> Hidden</label>
+                </fieldset>
+                <fieldset><legend>Open seats</legend>
+                  <label><input type="radio" name="placeholder" value="desk"> Empty desk</label>
+                  <label><input type="radio" name="placeholder" value="cat"> A cat keeps the seat</label>
+                  <label><input type="radio" name="placeholder" value="dog"> A dog keeps the seat</label>
+                  <label><input type="radio" name="placeholder" value="none"> Do not show</label>
+                </fieldset>
+                <fieldset><legend>Avatars</legend>
+                  <label><input type="radio" name="avatars" value="pixel"> Pixel sprites</label>
+                  <label><input type="radio" name="avatars" value="initials"> Initials</label>
+                </fieldset>
+                <fieldset><legend>Order inside a group</legend>
+                  <label><input type="radio" name="sort" value="manual"> As written</label>
+                  <label><input type="radio" name="sort" value="name"> By name</label>
+                  <label><input type="radio" name="sort" value="share"> By share</label>
+                </fieldset>
+                <label class="display-check"><input type="checkbox" name="locations"> Show locations</label>
+                <p class="display-hint">Saved in the document (<code>display:</code>), so links and embeds look the same.</p>
+              </div>
+            </div>
             <span class="only-building">
               <label class="scale-field"><span>Zoom</span><input type="range" id="scaleRange" min="0.6" max="1.6" step="0.1" value="1" aria-label="Zoom"></label>
               <button type="button" class="btn btn--ghost btn--sm" id="fitBtn" data-action="fit" aria-pressed="false" title="Scale the building to the board width">Fit</button>
@@ -203,6 +233,7 @@
       <p><strong>Groups</strong> hold people. A group inside a group is a sub-group. A <strong>shared space</strong> (band) spans several groups: a QA pool, an on-call rotation, shared efforts.</p>
       <p><strong>Percentages.</strong> Drop with <kbd>Alt</kbd> held to split a person between two groups. Every seat has a share bar: drag it (5% steps), or focus it and nudge with the arrows; click the <em>NN%</em> badge to type a value. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
       <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner. <strong>Visit</strong> lets you walk it.</p>
+      <p><strong>Display.</strong> Per document: center seats in their box, show shares as bars, badges only or hide them, let a cat or a dog keep an open seat, pixel sprites or initials, order seats by name or share, hide locations. Each person's avatar has presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; everything lands in the YAML.</p>
       <p><strong>Versions.</strong> Snapshot the document before a change (it is stored inside the YAML as <code>history:</code>, so it travels with links and exports). Scrub through snapshots, restore one, or <strong>compare now</strong> with a snapshot or a pasted document: the board marks who moved, joined, left, and whose share changed; the Changes tab lists it all.</p>
       <p><strong>YAML</strong> is the document. Edit it in the side panel and Apply (<kbd>Cmd/Ctrl+Enter</kbd>). Define <code>profiles:</code> once and <code>extends:</code> them from groups or people, gitlabform style. Share links carry the whole document.</p>
       <dl class="keys">

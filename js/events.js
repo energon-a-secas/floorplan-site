@@ -7,8 +7,9 @@
 
 import {
   state, ui, snapshot, undo, redo, addPerson, removePerson, addGroup, removeGroup, updateGroup, updatePerson,
-  setMembership, removeMembership, reorderGroup, setLayout, clearLayouts, setMode, resetTo, clearAll, membershipsOf,
+  setMembership, removeMembership, reorderGroup, setLayout, clearLayouts, setMode, resetTo, clearAll, membershipsOf, setDisplay,
 } from './state.js'
+import { avatarSpec, HAIR_STYLES } from './avatar.js'
 import { render, renderBoard, renderRoster, renderDetail, renderToolbar, renderYaml, renderYamlMessages, markYamlInSync, afterChange } from './render.js'
 import { $, showToast, copyText, clamp, debounce } from './utils.js'
 import { parseYaml } from './yaml.js'
@@ -37,6 +38,7 @@ export function bindEvents() {
   $('scaleRange')?.addEventListener('input', e => { ui.scale = Number(e.target.value) || 1; ui.fit = false; renderToolbar(); renderBoard() })
   setupMenu('examplesBtn', 'examplesMenu')
   setupMenu('exportBtn', 'exportMenu')
+  setupMenu('displayBtn', 'displayMenu', { stayOpen: true })
   // Versions strip: snapshot form, compare select, scrubber (delegated; the strip re-renders)
   document.addEventListener('submit', e => {
     if (e.target.id !== 'snapForm') return
@@ -60,7 +62,7 @@ export function bindEvents() {
 }
 
 // ── Menus (.header-menu, toggled by the site; Esc/outside handled here) ──
-function setupMenu(btnId, menuId) {
+function setupMenu(btnId, menuId, { stayOpen = false } = {}) {
   const btn = $(btnId), menu = $(menuId)
   if (!btn || !menu) return
   const close = () => { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false') }
@@ -73,7 +75,7 @@ function setupMenu(btnId, menuId) {
     if (open) menu.querySelector('[role="menuitem"]')?.focus()
   })
   document.addEventListener('click', e => { if (!menu.contains(e.target) && e.target !== btn) close() })
-  menu.addEventListener('click', e => { if (e.target.closest('[role="menuitem"]')) close() })
+  menu.addEventListener('click', e => { if (!stayOpen && e.target.closest('[role="menuitem"]')) close() })
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && menu.classList.contains('open')) { close(); btn.focus() } })
 }
 
@@ -89,6 +91,15 @@ function onClick(e) {
   if (ex) { loadExample(ex.dataset.example); return }
   const exp = t.closest('[data-export]')
   if (exp) { runExport(exp.dataset.export); return }
+  const preset = t.closest('[data-preset]')
+  if (preset && ui.selection?.type === 'person') {
+    if (isLocked()) return
+    snapshot()
+    updatePerson(ui.selection.id, { avatar: preset.dataset.preset === 'seeded' ? null : { preset: preset.dataset.preset } })
+    afterChange(); return
+  }
+  const sw = t.closest('.swatch[data-av], button[data-av]')
+  if (sw && ui.selection?.type === 'person') { if (isLocked()) return; applyAvatarField(sw.dataset.av, sw.dataset.value); return }
   const badge = t.closest('.pct-badge')
   if (badge) { e.stopPropagation(); if (!isLocked()) openPctEditor(badge); return }
   if (t.closest('[data-pct-bar]')) return   // the bar owns its pointer events (dnd.js)
@@ -138,7 +149,7 @@ function runAction(action, el, e) {
     case 'undo': doUndo(); break
     case 'redo': doRedo(); break
     case 'clear': snapshot(); clearAll(); ui.selection = null; ui.picked = null; afterChange(); showToast('Board cleared. Cmd/Ctrl+Z brings it back'); break
-    case 'toggle-avatars': ui.avatars = !ui.avatars; renderToolbar(); renderBoard(); renderRoster(); renderDetail(); break
+    case 'toggle-avatars': snapshot(); setDisplay('avatars', state.meta.display.avatars === 'initials' ? 'pixel' : 'initials'); afterChange(); break
     case 'visit': toggleVisit(); break
     case 'fit': ui.fit = !ui.fit; renderToolbar(); renderBoard(); break
     case 'toggle-versions': ui.versionsOpen = !ui.versionsOpen; renderToolbar(); import('./render.js').then(m => m.renderVersions()); break
@@ -256,8 +267,34 @@ function onInput(e) {
     if (Number.isFinite(v) && v >= 1 && v <= 100) { setMembership(g, p, v); scheduleSoftChange() }
   }
 }
+/** Merge one avatar field into the person's custom spec (seeded values become explicit so the picker reads back what it shows). */
+function applyAvatarField(key, value) {
+  const p = state.people[ui.selection.id]; if (!p) return
+  const spec = avatarSpec(p.name, p.avatar)
+  const cur = { ...(p.avatar || {}) }
+  delete cur.preset
+  const next = { kind: spec.kind, hair: HAIR_STYLES[spec.style], hairColor: spec.hair, skin: spec.skin, coat: spec.coat, glasses: spec.glasses, beard: spec.beard, item: spec.item, ...cur }
+  if (spec.shirt) next.shirt = spec.shirt
+  if (key === 'shirt' && !value) delete next.shirt
+  else if (key === 'glasses' || key === 'beard') next[key] = value === true || value === 'true'
+  else next[key] = value
+  snapshot()
+  updatePerson(p.id, { avatar: next })
+  afterChange()
+}
 function onChange(e) {
   const t = e.target
+  if (t.closest('#displayMenu') && t.name) {
+    snapshot()
+    setDisplay(t.name, t.type === 'checkbox' ? t.checked : t.value)
+    afterChange()
+    return
+  }
+  if (t.dataset.av && ui.selection?.type === 'person' && t.closest('#detailSheet')) {
+    if (isLocked()) return
+    applyAvatarField(t.dataset.av, t.type === 'checkbox' ? t.checked : t.value)
+    return
+  }
   if (t.dataset.span && ui.selection?.type === 'group') {
     const g = state.groups[ui.selection.id]; if (!g) return
     const spans = t.checked ? [...g.spans, t.dataset.span] : g.spans.filter(s => s !== t.dataset.span)

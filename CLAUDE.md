@@ -35,7 +35,7 @@ One model (`state.js`), two renderers over it, one DnD contract between them.
 | `js/events.js` | delegated clicks (`data-action`), keys, YAML apply, menus, inline pct editor |
 | `js/export.js`, `js/image-export.js` | YAML/JSON/Markdown/Mermaid, `#d=` and `?src=`, imports; SVG/PNG from the measured DOM |
 | `js/markdown.js` | escape-first renderer, outline import (`## Group`, `- Name (50%) @Loc`) and export |
-| `js/avatar.js` | seeded 12x12 pixel avatars, lazy Silkscreen font |
+| `js/avatar.js` | seeded 12x12 pixel avatars with kinds (person, cat, dog, robot), items, presets and per-person `avatar` specs; pet placeholders for open seats; lazy Silkscreen font |
 | `js/visit.js` | walk the office (lazy-imported) |
 | `js/examples.js`, `examples/*.yaml` | the two bundled documents (same text, the files exist for `?src=` and llms.txt) |
 
@@ -54,6 +54,7 @@ Vendored from `packages/neorgon-ui/`, never edit in place: `js/neorgon-header.js
 - Every mutation is `snapshot()` then mutate then `afterChange()` (save + render + YAML regen).
 - Both renderers emit the DnD contract: `data-drag="person" data-person data-from` on draggables, `data-seat="GROUP:PERSON"`, `data-drop="group" data-group` (or `data-drop="roster"`), `data-room-handle="move|resize"`, and `data-pct-bar="GROUP:PERSON"` on the share bar (pointer drag in `dnd.js`, arrow keys in `events.js`, the number badge `data-pct` opens a typed input). `dnd.js` knows nothing else.
 - Seats are one size per view: diagram seats fill an equal-column grid (`minmax(172px, 1fr)`), building seats are 1.55 x 1.6 cells (`SEAT_W/SEAT_H` in `layout.js` size rooms for them). Change one and the other.
+- `state.meta.display` holds the document-level view options (`align`, `shares`, `placeholder`, `avatars`, `sort`, `locations`); `renderToolbar()` maps them to `body.display-*` classes and `ui.avatars`. Only non-defaults are emitted as `display:`. A person's `avatar` is a normalized object (`readAvatar` in `schema.js`); the picker in the person sheet writes every field explicitly once touched so the sheet reads back what it shows.
 - URL flags live on `ui`: `embed` (chrome hidden, `saveState()` is a no-op), `readonly` (dnd, pct and mutating actions refuse; `VIEW_ACTIONS` in `events.js` is the allow-list), `fit` (building scale follows the board width), `?mode=` overrides the document for the session.
 - Elements tagged `data-svg="box|text|img|disc|badge|tag|door|bar"` are what `image-export.js` traces; a new visual element that should appear in SVG/PNG needs a role.
 - Markdown is rendered escape-first (no DOMPurify in the fleet): the regexes only promote already-escaped text.

@@ -118,6 +118,50 @@
           }
         }
       }
+    },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "View options saved with the document",
+      "properties": {
+        "align": {
+          "enum": [
+            "start",
+            "center"
+          ]
+        },
+        "shares": {
+          "enum": [
+            "bars",
+            "badges",
+            "hidden"
+          ]
+        },
+        "placeholder": {
+          "enum": [
+            "desk",
+            "cat",
+            "dog",
+            "none"
+          ]
+        },
+        "avatars": {
+          "enum": [
+            "pixel",
+            "initials"
+          ]
+        },
+        "sort": {
+          "enum": [
+            "manual",
+            "name",
+            "share"
+          ]
+        },
+        "locations": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "$defs": {
@@ -230,6 +274,9 @@
         },
         "extends": {
           "$ref": "#/$defs/extends"
+        },
+        "avatar": {
+          "$ref": "#/$defs/avatar"
         }
       },
       "anyOf": [
@@ -384,6 +431,9 @@
         },
         "layout": {
           "$ref": "#/$defs/rect"
+        },
+        "avatar": {
+          "$ref": "#/$defs/avatar"
         }
       },
       "not": {
@@ -418,6 +468,76 @@
           "default": "auto"
         }
       }
+    },
+    "avatar": {
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "A kind (person, cat, dog, robot) or a preset id"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "preset": {
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "person",
+                "cat",
+                "dog",
+                "robot"
+              ]
+            },
+            "hair": {
+              "oneOf": [
+                {
+                  "enum": [
+                    "flat",
+                    "tall",
+                    "side",
+                    "long",
+                    "cap"
+                  ]
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 4
+                }
+              ]
+            },
+            "hairColor": {
+              "type": "string"
+            },
+            "skin": {
+              "type": "string"
+            },
+            "coat": {
+              "type": "string"
+            },
+            "glasses": {
+              "type": "boolean"
+            },
+            "beard": {
+              "type": "boolean"
+            },
+            "item": {
+              "enum": [
+                "none",
+                "laptop",
+                "coffee",
+                "headset",
+                "hat"
+              ]
+            },
+            "shirt": {
+              "$ref": "#/$defs/hex"
+            }
+          }
+        }
+      ]
     }
   }
 }

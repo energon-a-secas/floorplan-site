@@ -50,6 +50,7 @@ Floorplan builds team maps. Drag people from a roster into groups and sub-groups
 - **Embeddable** -- `?embed=1&mode=building#d=...` in an iframe shows just the board (never touches the visitor's localStorage); `readonly=1` locks it; `fit=1` scales the building to the frame
 - **Agent-ready** -- `llms.txt` carries the schema, the rules that trip generated documents, the link recipe, and `schema.json` is the same tree as a JSON Schema
 - **Two examples** -- a nested team chart and an office building with explicit layout, bands and links; every name is fictional
+- **Avatars and display** -- per-person avatar presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; per-document display options: center seats in a box, shares as bars / badges / hidden, a cat or dog keeping an open seat, pixel or initials, order by name or share, locations on or off
 - **Versions and diff** -- dated snapshots stored inside the document (`history:`), a scrubber to preview them, restore with undo, and compare now with any snapshot or a pasted document: the board marks joined/moved/left/share changes and the Changes tab lists them
 - **Local only** -- localStorage, no account, no server; 40 steps of undo that survive Clear and example loads
 

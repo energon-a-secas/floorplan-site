@@ -11,7 +11,7 @@
 //  the stack on reset; this does not).
 // ════════════════════════════════════════════════════════════
 
-import { emptyModel, normalizeDoc, modelToDoc, MODES } from './schema.js'
+import { emptyModel, normalizeDoc, modelToDoc, MODES, DISPLAY_OPTIONS, readAvatar } from './schema.js'
 import { debounce, slug, colorAt } from './utils.js'
 
 export const STORAGE_KEY = 'floorplan-v1'
@@ -86,13 +86,20 @@ export function addPerson({ name, location = '', role = '' }) {
   const clean = String(name ?? '').trim().slice(0, 60)
   if (!clean) return null
   const id = uniqueKey(clean, state.people)
-  const p = { id, name: clean, location: String(location).trim(), role: String(role).trim(), color: '', notes: '', extends: [] }
+  const p = { id, name: clean, location: String(location).trim(), role: String(role).trim(), color: '', notes: '', avatar: null, extends: [] }
   state.people[id] = p
   return p
 }
 export function updatePerson(id, patch) {
   const p = state.people[id]; if (!p) return
   for (const k of ['name', 'location', 'role', 'color', 'notes']) if (k in patch) p[k] = String(patch[k] ?? '')
+  if ('avatar' in patch) p.avatar = readAvatar(patch.avatar)
+}
+/** Document-level display options (align, shares, placeholder, avatars, sort, locations). */
+export function setDisplay(key, value) {
+  const d = state.meta.display
+  if (key === 'locations') { d.locations = !!value; return }
+  if (DISPLAY_OPTIONS[key]?.includes(value)) d[key] = value
 }
 export function removePerson(id) {
   delete state.people[id]
@@ -182,6 +189,7 @@ export function setLayout(groupId, rect) {
 }
 export function clearLayouts() { for (const g of Object.values(state.groups)) g.layout = null }
 export function setMode(mode) { if (MODES.includes(mode)) state.meta.mode = mode }
+export const display = () => state.meta.display
 export function addLink(from, to, label = '') {
   if (from === to || !state.groups[from] || !state.groups[to]) return null
   const dup = state.links.find(l => (l.from === from && l.to === to) || (l.from === to && l.to === from))

@@ -12,7 +12,7 @@ import { emitYaml } from './yaml.js'
 import { renderDiagram } from './render-diagram.js'
 import { renderBuilding } from './render-building.js'
 import { beginFrame, faceHtml, totals } from './parts.js'
-import { loadPixelFont } from './avatar.js'
+import { loadPixelFont, PRESETS, avatarDataUrl, KINDS, HAIR_STYLES, ITEMS, SKIN, HAIR, COAT, avatarSpec } from './avatar.js'
 import { refreshDiff, baseLabel, baseModel } from './diff.js'
 
 let lastLayout = null
@@ -66,7 +66,16 @@ export function renderToolbar() {
   $('yamlToggle')?.setAttribute('aria-pressed', String(ui.yamlOpen))
   $('yamlPanel')?.toggleAttribute('hidden', !ui.yamlOpen)
   document.body.classList.toggle('yaml-open', ui.yamlOpen)
-  $('avatarsToggle')?.setAttribute('aria-pressed', String(ui.avatars))
+  const disp = state.meta.display || {}
+  ui.avatars = disp.avatars !== 'initials'
+  document.body.classList.toggle('display-align-center', disp.align === 'center')
+  document.body.classList.toggle('display-shares-hidden', disp.shares === 'hidden')
+  document.body.classList.toggle('display-shares-badges', disp.shares === 'badges')
+  document.body.classList.toggle('display-locations-off', disp.locations === false)
+  document.querySelectorAll('#displayMenu input[name]').forEach(inp => {
+    if (inp.type === 'checkbox') inp.checked = disp[inp.name] !== false
+    else inp.checked = String(disp[inp.name]) === inp.value
+  })
   const scale = $('scaleRange'); if (scale) scale.value = String(ui.scale)
   $('visitBtn')?.setAttribute('aria-pressed', String(ui.visiting))
   $('fitBtn')?.setAttribute('aria-pressed', String(ui.fit))
@@ -226,6 +235,7 @@ function personDetail(p) {
     ${field('Location', 'person.location', p.location, { placeholder: 'City or country' })}
     ${field('Role', 'person.role', p.role, { placeholder: 'Developer, QA, Product...' })}
     ${p.extends.length ? `<p class="sheet-hint">Extends profile: ${p.extends.map(escHtml).join(', ')}</p>` : ''}
+    ${avatarPicker(p, t.parts[0]?.group.color || p.color || '#475569')}
     <label class="sheet-field"><span>Notes (markdown)</span><textarea data-field="person.notes" rows="4" placeholder="Anything the map should remember about this person">${escHtml(p.notes)}</textarea></label>
     ${p.notes.trim() ? `<div class="md-preview">${renderMarkdown(p.notes)}</div>` : ''}
     <h3 class="sheet-sub">Shares</h3>
@@ -356,4 +366,27 @@ export function renderChanges() {
   ]))
   if (d.layout.length) out.push(sec('Rooms moved or resized', d.layout.map(id => item('low', escHtml(gname(id)), '', { type: 'group', id }))))
   list.innerHTML = out.join('')
+}
+
+
+// ── Avatar picker (person sheet) ─────────────────────────────
+function avatarPicker(p, shirt) {
+  const cur = p.avatar || null
+  const spec = avatarSpec(p.name, cur)
+  const activePreset = cur?.preset || (cur ? '' : 'seeded')
+  const presets = PRESETS.map(pr => `<button type="button" class="av-preset${activePreset === pr.id ? ' is-active' : ''}" data-preset="${pr.id}" title="${escHtml(pr.name)}" aria-label="${escHtml(pr.name)}"><img src="${avatarDataUrl(p.name, shirt, pr.spec)}" width="30" height="30" alt="" class="px-avatar"></button>`).join('')
+  const opt = (list, val, labels) => list.map((v, i) => `<option value="${v}"${String(val) === String(v) ? ' selected' : ''}>${labels ? labels[i] : v}</option>`).join('')
+  const swatches = (name, colors, val) => `<span class="swatches">${colors.map((c, i) => `<button type="button" class="swatch${val === c ? ' is-active' : ''}" data-av="${name}" data-value="${c}" style="--sw:${c}" aria-label="${name} ${i + 1}"></button>`).join('')}</span>`
+  const isPerson = spec.kind === 'person'
+  return `<fieldset class="sheet-field av-fieldset"><legend>Avatar</legend>
+    <div class="av-grid">${presets}</div>
+    <div class="av-fields">
+      <label>Kind <select data-av="kind">${opt(KINDS, spec.kind)}</select></label>
+      ${isPerson ? `<label>Hair <select data-av="hair">${opt(HAIR_STYLES, HAIR_STYLES[spec.style])}</select></label>` : ''}
+      <label>Item <select data-av="item">${opt(ITEMS, spec.item)}</select></label>
+      ${isPerson ? `<label><input type="checkbox" data-av="glasses" ${spec.glasses ? 'checked' : ''}> Glasses</label><label><input type="checkbox" data-av="beard" ${spec.beard ? 'checked' : ''}> Beard</label>` : (spec.kind !== 'robot' ? `<label><input type="checkbox" data-av="glasses" ${spec.glasses ? 'checked' : ''}> Glasses</label>` : '')}
+    </div>
+    ${isPerson ? `<div class="av-row"><span>Skin</span>${swatches('skin', SKIN, spec.skin)}</div><div class="av-row"><span>Hair</span>${swatches('hairColor', HAIR, spec.hair)}</div>` : (spec.kind !== 'robot' ? `<div class="av-row"><span>Coat</span>${swatches('coat', COAT, spec.coat)}</div>` : '')}
+    <div class="av-row"><span>Shirt</span><input type="color" data-av="shirt" value="${escHtml(spec.shirt || shirt)}" aria-label="Shirt colour"> <button type="button" class="btn btn--ghost btn--sm" data-av="shirt" data-value="">Group colour</button>${cur ? ` <button type="button" class="btn btn--ghost btn--sm" data-preset="seeded">Reset to seeded</button>` : ''}</div>
+  </fieldset>`
 }

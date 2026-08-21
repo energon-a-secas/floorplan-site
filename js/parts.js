@@ -15,7 +15,7 @@ export function beginFrame() { totalsCache = personTotals() }
 export function totals() { return totalsCache || (totalsCache = personTotals()) }
 
 export function faceHtml(person, color, { px = 36, forceInitials = false } = {}) {
-  if (ui.avatars && !forceInitials) return avatarImg(person.name, color, { px })
+  if (ui.avatars && !forceInitials) return avatarImg(person.name, color, { px, custom: person.avatar || null })
   return `<span class="face-disc" style="--face:${escHtml(color || '#64748b')};width:${px}px;height:${px}px" data-svg="disc">${escHtml(initials(person.name))}</span>`
 }
 
@@ -58,10 +58,21 @@ export function ghostSeatsHtml(group, { compact = false } = {}) {
   </div>`).join('')
 }
 
+/** Members in the document's display order: manual (YAML order), by name, or by share. */
+export function sortedMembers(group) {
+  const mode = state.meta.display?.sort || 'manual'
+  const list = [...group.members]
+  if (mode === 'name') list.sort((a, b) => (state.people[a.person]?.name || '').localeCompare(state.people[b.person]?.name || ''))
+  if (mode === 'share') list.sort((a, b) => b.pct - a.pct || (state.people[a.person]?.name || '').localeCompare(state.people[b.person]?.name || ''))
+  return list
+}
+
 export function vacantSeatsHtml(group, n, { compact = false } = {}) {
   if (n <= 0) return ''
+  const ph = state.meta.display?.placeholder || 'desk'
+  if (ph === 'none') return ''
   let out = ''
-  for (let i = 0; i < Math.min(n, 4); i++) out += `<div class="seat seat--vacant${compact ? ' seat--compact' : ''}" title="Open seat" aria-hidden="true">${vacantImg(36)}<span class="seat-meta"><span class="seat-name">open</span></span></div>`
+  for (let i = 0; i < Math.min(n, 4); i++) out += `<div class="seat seat--vacant seat--vacant-${ph}${compact ? ' seat--compact' : ''}" title="Open seat" aria-hidden="true">${vacantImg(36, ph)}<span class="seat-meta"><span class="seat-name">open</span></span></div>`
   if (n > 4) out += `<div class="seat seat--vacant seat--more${compact ? ' seat--compact' : ''}" aria-hidden="true"><span class="seat-meta"><span class="seat-name">+${n - 4} open</span></span></div>`
   return out
 }

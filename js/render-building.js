@@ -11,7 +11,7 @@
 import { state, ui, childrenOf } from './state.js'
 import { computeLayout } from './layout.js'
 import { escHtml } from './utils.js'
-import { seatHtml, vacantSeatsHtml, ghostSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml } from './parts.js'
+import { seatHtml, vacantSeatsHtml, ghostSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml, sortedMembers } from './parts.js'
 import { totals } from './parts.js'
 
 export function renderBuilding() {
@@ -62,7 +62,7 @@ function roomHtml(g, r, straddled) {
   }
   const kids = childrenOf(g.id)
   const { vacant } = capacityInfo(g)
-  const ownSeats = g.members.filter(m => !straddled.has(`${g.id}:${m.person}`)).map(m => seatHtml(g, m, { compact: true })).join('')
+  const ownSeats = sortedMembers(g).filter(m => !straddled.has(`${g.id}:${m.person}`)).map(m => seatHtml(g, m, { compact: true })).join('')
     + ghostSeatsHtml(g, { compact: true })
     + vacantSeatsHtml(g, vacant, { compact: true })
   const isRoom = r.kind === 'room' || r.kind === 'band'
