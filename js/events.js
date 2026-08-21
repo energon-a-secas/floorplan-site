@@ -14,7 +14,8 @@ import { $, showToast, copyText, clamp, debounce } from './utils.js'
 import { parseYaml } from './yaml.js'
 import { exampleById } from './examples.js'
 import { bindDnd, commitDrop } from './dnd.js'
-import { exportYamlFile, exportJsonFile, exportMarkdownFile, exportMermaidFile, copyShareLink, copyPrompt, importFile, importText } from './export.js'
+import { exportYamlFile, exportJsonFile, exportMarkdownFile, exportMermaidFile, copyShareLink, copyPrompt, importFile, importText, parseAny } from './export.js'
+import { takeSnapshot, deleteSnapshot, enterPreview, exitPreview, restorePreview, setCompare, isLocked } from './versions.js'
 import { exportSVG, exportPNG } from './image-export.js'
 
 export function bindEvents() {
@@ -36,6 +37,24 @@ export function bindEvents() {
   $('scaleRange')?.addEventListener('input', e => { ui.scale = Number(e.target.value) || 1; ui.fit = false; renderToolbar(); renderBoard() })
   setupMenu('examplesBtn', 'examplesMenu')
   setupMenu('exportBtn', 'exportMenu')
+  // Versions strip: snapshot form, compare select, scrubber (delegated; the strip re-renders)
+  document.addEventListener('submit', e => {
+    if (e.target.id !== 'snapForm') return
+    e.preventDefault()
+    takeSnapshot($('snapLabel')?.value || '')
+  })
+  document.addEventListener('change', e => {
+    if (e.target.id !== 'compareBase') return
+    const v = e.target.value
+    if (v === '') setCompare(null)
+    else if (v === 'external') { if (ui.compare?.kind !== 'external') { ui.importTarget = 'compare'; $('importTitle').textContent = 'Compare with a document'; $('importDialog')?.showModal(); $('importText')?.focus() } }
+    else setCompare({ kind: 'version', index: Number(v) })
+  })
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'versionScrub') return
+    const v = Number(e.target.value)
+    if (v >= state.history.length) exitPreview(); else enterPreview(v)
+  })
   // Fit follows the frame: iframes and window resizes re-scale the building
   window.addEventListener('resize', debounce(() => { if (ui.fit && state.meta.mode === 'building') renderBoard() }, 150))
 }
@@ -71,7 +90,7 @@ function onClick(e) {
   const exp = t.closest('[data-export]')
   if (exp) { runExport(exp.dataset.export); return }
   const badge = t.closest('.pct-badge')
-  if (badge) { e.stopPropagation(); if (!ui.readonly) openPctEditor(badge); return }
+  if (badge) { e.stopPropagation(); if (!isLocked()) openPctEditor(badge); return }
   if (t.closest('[data-pct-bar]')) return   // the bar owns its pointer events (dnd.js)
 
   // carrying someone (keyboard pick-up) and clicking a target seats them
@@ -89,10 +108,12 @@ function onClick(e) {
   if (t.closest('.room--title')) { select('group', t.closest('.room--title').dataset.group); return }
 }
 
-const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'help', 'dialog-close', 'fit', 'share'])
+const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'help', 'dialog-close', 'fit', 'share', 'toggle-versions', 'preview-version', 'exit-preview', 'drawer-tab', 'compare-clear', 'compare-load', 'import-close', 'import-apply', 'import-file'])
+const PREVIEW_OK = new Set([...VIEW_ACTIONS, 'restore-version', 'delete-version', 'snapshot-now'])
 function runAction(action, el, e) {
   const id = el.dataset.id
   if (ui.readonly && !VIEW_ACTIONS.has(action)) { showToast('Read-only view. Open it in Floorplan to edit'); return }
+  if (ui.preview && !PREVIEW_OK.has(action)) { showToast('Viewing a snapshot. Back to now to edit, or Restore this version'); return }
   switch (action) {
     case 'select-group': select('group', id); break
     case 'close-detail': ui.selection = null; renderDetail(); renderBoard(); renderRoster(); break
@@ -120,9 +141,28 @@ function runAction(action, el, e) {
     case 'toggle-avatars': ui.avatars = !ui.avatars; renderToolbar(); renderBoard(); renderRoster(); renderDetail(); break
     case 'visit': toggleVisit(); break
     case 'fit': ui.fit = !ui.fit; renderToolbar(); renderBoard(); break
-    case 'import-open': $('importDialog')?.showModal(); $('importText')?.focus(); break
+    case 'toggle-versions': ui.versionsOpen = !ui.versionsOpen; renderToolbar(); import('./render.js').then(m => m.renderVersions()); break
+    case 'preview-version': enterPreview(Number(el.dataset.idx)); break
+    case 'exit-preview': exitPreview(); break
+    case 'restore-version': restorePreview(); break
+    case 'delete-version': deleteSnapshot(Number(el.dataset.idx)); showToast('Snapshot deleted. Cmd/Ctrl+Z brings it back'); break
+    case 'compare-clear': setCompare(null); break
+    case 'compare-load': ui.importTarget = 'compare'; $('importDialog')?.showModal(); $('importTitle').textContent = 'Compare with a document'; $('importText')?.focus(); break
+    case 'drawer-tab': ui.drawerTab = el.dataset.tab || 'insights'; ui.drawerOpen = true; document.body.classList.add('drawer-open'); import('./render.js').then(m => m.renderChanges()); break
+    case 'import-open': ui.importTarget = 'doc'; $('importTitle').textContent = 'Import'; $('importDialog')?.showModal(); $('importText')?.focus(); break
     case 'import-close': $('importDialog')?.close(); break
-    case 'import-apply': { const text = $('importText').value; if (importText(text)) { $('importDialog').close(); $('importText').value = '' } break }
+    case 'import-apply': {
+      const text = $('importText').value
+      if (ui.importTarget === 'compare') {
+        const { model, errors, kind } = parseAny(text)
+        if (!model || errors.length) { showToast(`${errors.length || 1} problem${errors.length === 1 ? '' : 's'} in the ${kind}: ${errors[0] || ''}`); break }
+        setCompare({ kind: 'external', model, label: (model.meta.title || 'pasted document') + ' (pasted)' })
+        $('importDialog').close(); $('importText').value = ''
+        break
+      }
+      if (importText(text)) { $('importDialog').close(); $('importText').value = '' }
+      break
+    }
     case 'import-file': $('importFile')?.click(); break
     case 'share': copyShareLink(); break
     case 'prompt': copyPrompt(); break
@@ -195,10 +235,11 @@ function openPctEditor(badge) {
 
 // ── Detail sheet fields ──────────────────────────────────────
 function onFocusIn(e) {
-  if (e.target.closest('#detailSheet') && e.target.matches('[data-field], [data-share], [data-span]')) snapshot()
+  if (e.target.closest('#detailSheet') && e.target.matches('[data-field], [data-share], [data-span]') && !isLocked()) snapshot()
 }
 function onInput(e) {
   const t = e.target
+  if (isLocked() && (t.id === 'docTitle' || t.dataset.field || t.dataset.share)) return
   if (t.id === 'docTitle') { state.meta.title = t.value.trim().slice(0, 80); document.title = (state.meta.title ? state.meta.title + ' · ' : '') + 'Floorplan | Team Map Builder'; scheduleSoftChange(); return }
   if (t.id === 'docNotesInput') { state.meta.notes = t.value; scheduleSoftChange(); return }
   const field = t.dataset.field
@@ -243,7 +284,7 @@ function onKeydown(e) {
   const el = document.activeElement
   if (el?.matches('[data-pct-bar]') && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
     e.preventDefault()
-    if (ui.readonly) return
+    if (isLocked()) return
     const [g, p] = el.dataset.pctBar.split(':')
     const m = state.groups[g]?.members.find(x => x.person === p); if (!m) return
     const step = e.shiftKey ? 10 : 5
@@ -258,7 +299,8 @@ function onKeydown(e) {
     document.querySelector(`[data-pct-bar="${g}:${p}"]`)?.focus({ preventScroll: true })
     return
   }
-  if (ui.readonly) return
+  if (e.key === 'Escape' && ui.preview && !ui.picked && !ui.drawerOpen && !ui.selection) { exitPreview(); return }
+  if (isLocked()) return
   if (e.key === 'Escape') {
     if (ui.picked) { ui.picked = null; renderBoard(); renderRoster(); return }
     if (ui.drawerOpen) { ui.drawerOpen = false; document.body.classList.remove('drawer-open'); return }

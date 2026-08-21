@@ -25,6 +25,7 @@ export function emptyModel() {
     people: {},     // id -> { id, name, location, role, color, notes, extends: [] }
     groups: {},     // id -> { id, kind, name, parent, spans, color, notes, capacity, owns, extends, order, members, layout }
     links: [],      // { id, from, to, label, kind }
+    history: [],    // { id, date, label, doc }  dated snapshots of the whole document (minus history)
   }
 }
 
@@ -251,6 +252,14 @@ export function normalizeDoc(raw) {
     model.links.push({ id: `${a.id}--${b.id}`, from: a.id, to: b.id, label: label.trim(), kind: ['door', 'corridor'].includes(kind) ? kind : 'auto' })
   })
 
+  // history: dated snapshots, kept as raw trees and normalized only when viewed
+  if (raw.history != null && !Array.isArray(raw.history)) errors.push('history must be a list of { date, label, doc }')
+  asList(raw.history).forEach((h, i) => {
+    if (!isObj(h) || !isObj(h.doc)) { warnings.push(`history[${i}]: skipped (needs a doc mapping)`); return }
+    const doc = { ...h.doc }; delete doc.history
+    model.history.push({ id: `v${i + 1}`, date: str(h.date).slice(0, 10), label: str(h.label).trim().slice(0, 60), doc })
+  })
+
   // default colours: top-level groups and bands cycle the palette
   let ci = 0
   for (const g of Object.values(model.groups)) {
@@ -309,6 +318,7 @@ export function modelToDoc(model) {
       return o
     })
   }
+  if (model.history?.length) doc.history = model.history.map(h => ({ date: h.date, label: h.label, doc: structuredClone(h.doc) }))
   return { doc, flattened }
 }
 

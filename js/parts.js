@@ -28,8 +28,10 @@ export function seatHtml(group, m, { compact = false } = {}) {
   const showPct = m.pct !== 100 || multi
   const picked = ui.picked?.person === p.id && ui.picked?.from === group.id
   const sel = ui.selection?.type === 'person' && ui.selection.id === p.id
-  const label = `${p.name}${p.location ? ', ' + p.location : ''}, ${m.pct}% in ${group.name}${multi ? `, ${t.total}% in total` : ''}. Enter to pick up, Delete to remove.`
-  return `<div class="seat${compact ? ' seat--compact' : ''}${picked ? ' is-picked' : ''}${sel ? ' is-selected' : ''}" data-seat="${group.id}:${p.id}" data-drag="person" data-person="${p.id}" data-from="${group.id}" data-band="${band}" tabindex="0" role="button" aria-label="${escHtml(label)}" style="--seat-color:${escHtml(group.color)}" data-svg="box">
+  const mark = ui.marks?.seats.get(`${group.id}:${p.id}`)
+  const label = `${p.name}${p.location ? ', ' + p.location : ''}, ${m.pct}% in ${group.name}${multi ? `, ${t.total}% in total` : ''}${mark ? `. Changed: ${mark.text}` : ''}. Enter to pick up, Delete to remove.`
+  return `<div class="seat${compact ? ' seat--compact' : ''}${picked ? ' is-picked' : ''}${sel ? ' is-selected' : ''}${mark ? ' diff-' + mark.kind : ''}" data-seat="${group.id}:${p.id}" data-drag="person" data-person="${p.id}" data-from="${group.id}" data-band="${band}" tabindex="0" role="button" aria-label="${escHtml(label)}" style="--seat-color:${escHtml(group.color)}" data-svg="box">
+    ${mark ? `<span class="diff-tag diff-tag--${mark.kind}" data-svg="tag">${escHtml(mark.text)}</span>` : ''}
     ${faceHtml(p, group.color)}
     <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(p.name)}</span>${p.location ? `<span class="seat-loc" data-svg="text">${escHtml(p.location)}</span>` : ''}</span>
     ${showPct ? `<button type="button" class="pct-badge" data-pct="${group.id}:${p.id}" data-band="${band}" title="Type the share" aria-label="Share ${m.pct}%, click to type a value" data-svg="badge">${m.pct}%</button>` : ''}
@@ -44,6 +46,16 @@ export function seatHtml(group, m, { compact = false } = {}) {
  */
 export function pctBarHtml(group, p, pct, band, extra = '') {
   return `<span class="pct-bar${extra ? ' ' + extra : ''}" data-pct-bar="${group.id}:${p.id}" role="slider" tabindex="0" aria-label="Share of ${escHtml(p.name)} in ${escHtml(group.name)}" aria-valuemin="5" aria-valuemax="100" aria-valuenow="${pct}" aria-valuetext="${pct}%" data-band="${band}" style="--p:${pct}" title="Drag to set the share (arrows nudge by 5)" data-svg="bar"><i class="pct-fill"></i><b class="pct-num">${pct}%</b></span>`
+}
+
+/** A person who was in this group in the baseline and is not now (compare mode). */
+export function ghostSeatsHtml(group, { compact = false } = {}) {
+  const list = ui.marks?.ghosts.get(group.id) || []
+  return list.map(gh => `<div class="seat seat--ghost seat--ghost-${gh.kind}${compact ? ' seat--compact' : ''}" title="${escHtml(gh.name)}: ${escHtml(gh.text)}" aria-label="${escHtml(gh.name)} ${escHtml(gh.text)} (baseline)" style="--seat-color:${escHtml(group.color)}" data-svg="box">
+    <span class="diff-tag diff-tag--${gh.kind}" data-svg="tag">${escHtml(gh.text)}</span>
+    ${state.people[gh.person] ? faceHtml(state.people[gh.person], '#475569') : `<span class="face-disc" style="--face:#475569;width:36px;height:36px">${escHtml(initials(gh.name))}</span>`}
+    <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(gh.name)}</span><span class="seat-loc">${gh.pct}% before</span></span>
+  </div>`).join('')
 }
 
 export function vacantSeatsHtml(group, n, { compact = false } = {}) {

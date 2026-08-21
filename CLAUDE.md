@@ -28,6 +28,7 @@ One model (`state.js`), two renderers over it, one DnD contract between them.
 | `js/state.js` | `state` (meta, profiles, people, groups, links), `ui` (never persisted), mutations, localStorage `floorplan-v1`, undo/redo 40 deep |
 | `js/layout.js` | `computeLayout()`: rects in grid cells for rooms, sub-rooms, bands, title bands; doors vs corridors; straddle seats; overlaps; `passableGrid()` for Visit |
 | `js/allocation.js` | per-person totals, group FTE/capacity, `computeInsights()` |
+| `js/versions.js`, `js/diff.js` | `history` snapshots (take, preview, restore, delete), compare baseline; `diffModels(a, b)` and `marksFor()` feed the board overlay and the Changes tab |
 | `js/render.js` | shell: roster, toolbar state, board dispatch, YAML panel, insights drawer, detail sheet, `afterChange()` |
 | `js/render-diagram.js`, `js/render-building.js`, `js/parts.js` | the two views and the seat/head markup they share |
 | `js/dnd.js` | pointer drag for people and rooms, `commitDrop()` shared with the keyboard carry |
@@ -44,7 +45,8 @@ Vendored from `packages/neorgon-ui/`, never edit in place: `js/neorgon-header.js
 
 - localStorage key `floorplan-v1` holds `{ v, doc, savedAt }` where `doc` is the **YAML tree** (what `modelToDoc` emits), not the internal map shape. `loadSaved()` runs it through `normalizeDoc`, so there is one validator in front of every entry point (saved session, `#d=`, `?src=`, file, paste).
 - `ui` (selection, picked person, panel state, zoom, visit) is never saved and never in an undo snapshot.
-- Undo snapshots are the model JSON; `resetTo()` never clears the stack, so Clear and example loads are undoable.
+- Undo snapshots are the model JSON (history included); `resetTo()` never clears the stack, so Clear and example loads are undoable.
+- `state.history` is a list of `{ id, date, label, doc }` where `doc` is a raw document tree (never normalized until previewed or compared, cached in `diff.js`). `resetTo(model, { keepHistory: true })` swaps the working document without touching the snapshots; that is how preview and restore work.
 
 ## Conventions
 
@@ -65,6 +67,7 @@ Vendored from `packages/neorgon-ui/`, never edit in place: `js/neorgon-header.js
 - **Building rooms are absolutely positioned siblings, not nested DOM.** Sub-rooms are separate elements with `z-index = 1 + depth`, so `elementFromPoint()` picks the deepest room and bands can span sub-rooms. Doors sit at z 20, straddle seats at 25: when a straddle occupies a shared wall the door moves to the far end of that wall (`layout.js`).
 - **The packer runs bands after rooms, then shifts auto rooms a band landed on, up to 3 passes.** Explicit `layout` rects are never moved; overlaps are allowed and flagged by Insights. Room move/resize (grip/corner) writes an explicit layout; "Auto layout" clears them all.
 - **`.workspace` has a fixed height** (`100dvh - 106px`) so the roster and board scroll internally; with `flex: 1` instead, the column flex `main` let it grow to content and the app-mode header auto-hid on the resulting page scroll.
+- **Previewing a snapshot swaps the model in place.** `ui.preview = { index, backup }` holds the working document as JSON; `saveState()` is a no-op while previewing, dnd/pct/keyboard/detail edits are locked (`isLocked()` in `versions.js`), and `exitPreview()` restores the backup. Restore = exit preview, undo snapshot, `resetTo(version, { keepHistory: true })`. Never call `afterChange()` while `ui.preview` is set.
 - **Visit mode blurs the active element on start.** Keys typed while a field has focus go to the field; WASD in the YAML textarea is text, not movement.
 - **`#d=` on an open tab is a hashchange, not a load**; `app.js` listens for it. `?src=` allows `https://` and `http://localhost` only.
 - The pixel font (Silkscreen) loads lazily on the first building render and is not embedded in SVG/PNG exports (system fallback, said in the toast).

@@ -13,6 +13,7 @@ import { renderDiagram } from './render-diagram.js'
 import { renderBuilding } from './render-building.js'
 import { beginFrame, faceHtml, totals } from './parts.js'
 import { loadPixelFont } from './avatar.js'
+import { refreshDiff, baseLabel, baseModel } from './diff.js'
 
 let lastLayout = null
 export const getLayout = () => lastLayout
@@ -41,12 +42,15 @@ export function markYamlInSync(text) {
 
 export function render() {
   beginFrame()
+  refreshDiff()
   document.title = (state.meta.title ? state.meta.title + ' · ' : '') + 'Floorplan | Team Map Builder'
   renderToolbar()
+  renderVersions()
   renderRoster()
   renderBoard()
   renderYaml()
   renderInsights()
+  renderChanges()
   renderDetail()
 }
 
@@ -68,6 +72,10 @@ export function renderToolbar() {
   $('fitBtn')?.setAttribute('aria-pressed', String(ui.fit))
   document.body.classList.toggle('embed', ui.embed)
   document.body.classList.toggle('readonly', ui.readonly)
+  document.body.classList.toggle('previewing', !!ui.preview)
+  document.body.classList.toggle('comparing', !!ui.compare)
+  $('versionsBtn')?.setAttribute('aria-pressed', String(ui.versionsOpen))
+  const vc = $('versionsCount'); if (vc) { vc.hidden = !state.history.length; vc.textContent = String(state.history.length) }
   const notes = $('docNotes')
   if (notes) {
     const has = !!state.meta.notes.trim()
@@ -259,4 +267,93 @@ function groupDetail(g) {
       <button type="button" class="btn btn--danger btn--sm" data-action="remove-group" data-id="${g.id}">Delete</button>
     </div>
   </div>`
+}
+
+
+// ── Versions strip + preview banner ──────────────────────────
+export function renderVersions() {
+  const bar = $('versionsBar'); if (!bar) return
+  const h = state.history
+  const open = ui.versionsOpen || !!ui.preview || !!ui.compare
+  bar.hidden = !open
+  const banner = $('previewBanner')
+  if (banner) {
+    banner.hidden = !ui.preview
+    if (ui.preview) {
+      const e = h[ui.preview.index]
+      banner.innerHTML = `<span class="pb-text">Viewing <strong>v${ui.preview.index + 1}</strong>${e?.date ? ' · ' + escHtml(e.date) : ''}${e?.label ? ' · ' + escHtml(e.label) : ''} <em>(read-only)</em></span>
+        <span class="toolbar"><button type="button" class="btn btn--primary btn--sm" data-action="restore-version">Restore this version</button><button type="button" class="btn btn--ghost btn--sm" data-action="delete-version" data-idx="${ui.preview.index}">Delete</button><button type="button" class="btn btn--secondary btn--sm" data-action="exit-preview">Back to now</button></span>`
+    }
+  }
+  if (!open) return
+  const chips = h.map((e, i) => `<button type="button" class="vb-chip${ui.preview?.index === i ? ' is-current' : ''}${ui.compare?.kind === 'version' && ui.compare.index === i ? ' is-base' : ''}" data-action="preview-version" data-idx="${i}" title="${escHtml(e.label || 'Snapshot')} ${escHtml(e.date)}"><b>v${i + 1}</b><span>${escHtml(e.date || '')}</span>${e.label ? `<i>${escHtml(e.label)}</i>` : ''}</button>`).join('<span class="vb-link" aria-hidden="true"></span>')
+  const compareOpts = h.map((e, i) => `<option value="${i}"${ui.compare?.kind === 'version' && ui.compare.index === i ? ' selected' : ''}>v${i + 1} · ${escHtml(e.date)}${e.label ? ' · ' + escHtml(e.label) : ''}</option>`).join('')
+  bar.innerHTML = `<div class="vb-row">
+    <span class="vb-label">Versions</span>
+    <div class="vb-track">${chips}${h.length ? '<span class="vb-link" aria-hidden="true"></span>' : ''}<button type="button" class="vb-chip vb-chip--now${ui.preview ? '' : ' is-current'}" data-action="exit-preview"><b>Now</b></button></div>
+    ${h.length ? `<input type="range" class="vb-scrub" id="versionScrub" min="0" max="${h.length}" value="${ui.preview ? ui.preview.index : h.length}" aria-label="Scrub through versions" title="Scrub through versions">` : ''}
+    ${ui.readonly ? '' : `<form class="vb-snap" id="snapForm" autocomplete="off"><input type="text" id="snapLabel" class="roster-input" placeholder="Label, e.g. Before reorg" maxlength="60" aria-label="Snapshot label"><button type="submit" class="btn btn--primary btn--sm">Snapshot now</button></form>`}
+  </div>
+  <div class="vb-row vb-row--compare">
+    <label class="vb-compare"><span>Compare now with</span>
+      <select id="compareBase" aria-label="Baseline to compare with">
+        <option value="">nothing</option>
+        ${compareOpts}
+        <option value="external"${ui.compare?.kind === 'external' ? ' selected' : ''}>${ui.compare?.kind === 'external' ? escHtml(ui.compare.label || 'pasted document') : 'a pasted document…'}</option>
+      </select></label>
+    ${ui.compare ? `<span class="vb-summary">${escHtml(changeSummary())}</span><button type="button" class="btn btn--ghost btn--sm" data-action="drawer-tab" data-tab="changes">Open changes</button><button type="button" class="btn btn--ghost btn--sm" data-action="compare-clear">Stop comparing</button>` : `<span class="vb-hint">${h.length ? 'Pick a snapshot to see who moved, who joined, who left, and which shares changed.' : 'Take a snapshot before a change, edit, then compare.'}</span>`}
+  </div>`
+}
+
+function changeSummary() {
+  const s = ui.diff?.summary; if (!s) return ''
+  if (!s.total) return 'No differences'
+  const bits = []
+  if (s.moves) bits.push(plural(s.moves, 'move'))
+  if (s.joined) bits.push(`${s.joined} joined`)
+  if (s.left) bits.push(`${s.left} left`)
+  if (s.shares) bits.push(plural(s.shares, 'share change'))
+  if (s.groups) bits.push(plural(s.groups, 'group change'))
+  if (s.people) bits.push(plural(s.people, 'person change', 'people changes'))
+  if (s.links) bits.push(plural(s.links, 'link change'))
+  if (s.layout) bits.push(plural(s.layout, 'room moved', 'rooms moved'))
+  return bits.join(' · ')
+}
+
+// ── Changes tab in the drawer ────────────────────────────────
+export function renderChanges() {
+  const list = $('changesList'); if (!list) return
+  document.querySelectorAll('#drawerTabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === ui.drawerTab)))
+  $('insightList')?.toggleAttribute('hidden', ui.drawerTab !== 'insights')
+  list.toggleAttribute('hidden', ui.drawerTab !== 'changes')
+  const cb = $('changesBadge'); if (cb) { cb.hidden = !ui.diff?.summary.total; cb.textContent = String(ui.diff?.summary.total || 0) }
+  if (!ui.compare) { list.innerHTML = '<p class="sheet-hint">Not comparing. Open <strong>Versions</strong> and pick a baseline, or paste a document.</p>'; return }
+  const d = ui.diff
+  if (!d || !d.summary.total) { list.innerHTML = `<p class="sheet-hint">No differences against ${escHtml(baseLabel())}.</p>`; return }
+  const bm = baseModel()
+  const gname = id => state.groups[id]?.name || bm?.groups[id]?.name || id
+  const pname = id => state.people[id]?.name || bm?.people[id]?.name || id
+  const item = (sev, title, detail, ref) => `<li class="insight insight--${sev}"${ref ? ` data-action="focus-ref" data-type="${ref.type}" data-id="${ref.id}" tabindex="0"` : ''}><span class="insight-dot"></span><div><div class="insight-title">${title}</div>${detail ? `<div class="insight-detail">${detail}</div>` : ''}</div></li>`
+  const sec = (title, items) => items.length ? `<div class="drawer-subhead">${title} (${items.length})</div><ul class="insight-items">${items.join('')}</ul>` : ''
+  const out = [`<p class="sheet-hint">Now vs <strong>${escHtml(baseLabel())}</strong>: ${escHtml(changeSummary())}</p>`]
+  out.push(sec('Moved', d.moves.map(m => item('medium', `${escHtml(pname(m.person))}: ${escHtml(gname(m.from))} → ${escHtml(gname(m.to))}`, m.fromPct !== m.pct ? `${m.fromPct}% → ${m.pct}%` : `${m.pct}%`, state.people[m.person] ? { type: 'person', id: m.person } : null))))
+  out.push(sec('Joined', d.memberships.filter(m => m.kind === 'joined' && !m.moved).map(m => item('low', `${escHtml(pname(m.person))} joined ${escHtml(gname(m.group))}`, `${m.to}%${d.people.added.includes(m.person) ? ' · new person' : ''}`, { type: 'person', id: m.person }))))
+  out.push(sec('Left', d.memberships.filter(m => m.kind === 'left' && !m.moved).map(m => item('high', `${escHtml(pname(m.person))} left ${escHtml(gname(m.group))}`, `was ${m.from}%${d.people.removed.includes(m.person) ? ' · no longer in the document' : ''}`, state.people[m.person] ? { type: 'person', id: m.person } : null))))
+  out.push(sec('Share changes', d.memberships.filter(m => m.kind === 'share').map(m => item('medium', `${escHtml(pname(m.person))} in ${escHtml(gname(m.group))}: ${m.from}% → ${m.to}%`, '', { type: 'person', id: m.person }))))
+  out.push(sec('Groups', [
+    ...d.groups.added.map(id => item('low', `Added ${escHtml(gname(id))}`, '', { type: 'group', id })),
+    ...d.groups.removed.map(id => item('high', `Removed ${escHtml(gname(id))}`, '', null)),
+    ...d.groups.changed.map(c => item('medium', `${escHtml(gname(c.id))} changed`, escHtml(Object.entries(c.fields).map(([k, [a, b]]) => `${k}: ${a ?? 'none'} → ${b ?? 'none'}`).join(' · ')), { type: 'group', id: c.id })),
+  ]))
+  out.push(sec('People', [
+    ...d.people.added.filter(id => !d.memberships.some(m => m.person === id && m.kind === 'joined')).map(id => item('low', `Added ${escHtml(pname(id))}`, 'not seated yet', { type: 'person', id })),
+    ...d.people.removed.filter(id => !d.memberships.some(m => m.person === id && m.kind === 'left')).map(id => item('high', `Removed ${escHtml(pname(id))}`, '', null)),
+    ...d.people.changed.map(c => item('low', `${escHtml(pname(c.id))} changed`, escHtml(Object.entries(c.fields).map(([k, [a, b]]) => `${k}: ${a || 'none'} → ${b || 'none'}`).join(' · ')), { type: 'person', id: c.id })),
+  ]))
+  out.push(sec('Links', [
+    ...d.links.added.map(l => item('low', `Linked ${escHtml(gname(l.from))} and ${escHtml(gname(l.to))}`, escHtml(l.label || ''), null)),
+    ...d.links.removed.map(l => item('medium', `Unlinked ${escHtml(gname(l.from))} and ${escHtml(gname(l.to))}`, escHtml(l.label || ''), null)),
+  ]))
+  if (d.layout.length) out.push(sec('Rooms moved or resized', d.layout.map(id => item('low', escHtml(gname(id)), '', { type: 'group', id }))))
+  list.innerHTML = out.join('')
 }

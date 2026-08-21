@@ -131,6 +131,7 @@
             <span class="toolbar-sep" aria-hidden="true"></span>
             <button type="button" class="btn btn--ghost btn--sm btn--icon" id="undoBtn" data-action="undo" aria-label="Undo" title="Undo (Cmd/Ctrl+Z)">↶</button>
             <button type="button" class="btn btn--ghost btn--sm btn--icon" id="redoBtn" data-action="redo" aria-label="Redo" title="Redo (Shift+Cmd/Ctrl+Z)">↷</button>
+            <button type="button" class="btn btn--ghost btn--sm btn--versions" id="versionsBtn" data-action="toggle-versions" aria-pressed="false" title="Dated snapshots of this document: preview, restore, compare">Versions <span class="mini-badge" id="versionsCount" hidden>0</span></button>
             <button type="button" class="btn btn--ghost btn--sm" id="avatarsToggle" data-action="toggle-avatars" aria-pressed="true" title="Pixel avatars or initials">Avatars</button>
             <span class="only-building">
               <label class="scale-field"><span>Zoom</span><input type="range" id="scaleRange" min="0.6" max="1.6" step="0.1" value="1" aria-label="Zoom"></label>
@@ -141,6 +142,8 @@
             <button type="button" class="btn btn--ghost btn--sm btn--clear" data-action="clear" title="Clear the board (undoable)">Clear</button>
           </div>
         </div>
+        <div class="versions-bar" id="versionsBar" hidden></div>
+        <div class="preview-banner" id="previewBanner" hidden></div>
         <div class="doc-notes md-preview" id="docNotes" hidden></div>
         <div class="board" id="board" data-mode="diagram"></div>
       </section>
@@ -167,12 +170,16 @@
 
   <aside class="insight-drawer" id="insightDrawer" aria-label="Insights">
     <header class="drawer-head">
-      <h2>Insights</h2>
-      <button type="button" class="btn btn--ghost btn--icon" data-action="close-insights" aria-label="Close insights">
+      <div class="drawer-tabs" id="drawerTabs" role="tablist">
+        <button type="button" role="tab" data-action="drawer-tab" data-tab="insights" aria-selected="true">Insights</button>
+        <button type="button" role="tab" data-action="drawer-tab" data-tab="changes" aria-selected="false">Changes <span class="mini-badge" id="changesBadge" hidden>0</span></button>
+      </div>
+      <button type="button" class="btn btn--ghost btn--icon" data-action="close-insights" aria-label="Close">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
     </header>
     <div class="drawer-body" id="insightList"></div>
+    <div class="drawer-body" id="changesList" hidden></div>
   </aside>
   <div class="drawer-scrim" id="drawerScrim" data-action="close-insights"></div>
 
@@ -196,6 +203,7 @@
       <p><strong>Groups</strong> hold people. A group inside a group is a sub-group. A <strong>shared space</strong> (band) spans several groups: a QA pool, an on-call rotation, shared efforts.</p>
       <p><strong>Percentages.</strong> Drop with <kbd>Alt</kbd> held to split a person between two groups. Every seat has a share bar: drag it (5% steps), or focus it and nudge with the arrows; click the <em>NN%</em> badge to type a value. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
       <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner. <strong>Visit</strong> lets you walk it.</p>
+      <p><strong>Versions.</strong> Snapshot the document before a change (it is stored inside the YAML as <code>history:</code>, so it travels with links and exports). Scrub through snapshots, restore one, or <strong>compare now</strong> with a snapshot or a pasted document: the board marks who moved, joined, left, and whose share changed; the Changes tab lists it all.</p>
       <p><strong>YAML</strong> is the document. Edit it in the side panel and Apply (<kbd>Cmd/Ctrl+Enter</kbd>). Define <code>profiles:</code> once and <code>extends:</code> them from groups or people, gitlabform style. Share links carry the whole document.</p>
       <dl class="keys">
         <dt><kbd>Enter</kbd> / <kbd>Space</kbd></dt><dd>pick up the focused person; <kbd>Enter</kbd> on a group seats them (<kbd>Alt+Enter</kbd> splits)</dd>

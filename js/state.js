@@ -34,15 +34,21 @@ export const ui = {
   visiting: false,
   embed: false,       // ?embed=1: chrome hidden, nothing written to localStorage
   readonly: false,    // ?readonly=1: look, do not touch
+  versionsOpen: false,
+  preview: null,      // { index, backup } while a snapshot is shown instead of the working document
+  compare: null,      // null | { kind: 'version', index } | { kind: 'external', model, label }
+  marks: null,        // diff overlay for the renderers (diff.js)
+  drawerTab: 'insights',
 }
 
 // ── Replace / clear ──────────────────────────────────────────
-export function resetTo(model) {
+export function resetTo(model, { keepHistory = false } = {}) {
   state.meta = model.meta
   state.profiles = model.profiles
   state.people = model.people
   state.groups = model.groups
   state.links = model.links
+  if (!keepHistory) state.history = Array.isArray(model.history) ? model.history : []
 }
 export function clearAll() { resetTo(emptyModel()) }
 
@@ -188,7 +194,7 @@ export function removeLink(id) { state.links = state.links.filter(l => l.id !== 
 
 // ── Persistence ──────────────────────────────────────────────
 export function saveState() {
-  if (ui.embed) return   // an embedded copy never overwrites the visitor's own document
+  if (ui.embed || ui.preview) return   // an embedded copy, or a snapshot on screen, never overwrites the working document
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, doc: modelToDoc(state).doc, savedAt: Date.now() }))
   } catch { /* quota or private mode: the session still works */ }
@@ -212,7 +218,7 @@ export function loadSaved() {
 // ── Undo / redo ──────────────────────────────────────────────
 const past = [], future = []
 const MAX_HISTORY = 40
-const pack = () => JSON.stringify({ meta: state.meta, profiles: state.profiles, people: state.people, groups: state.groups, links: state.links })
+const pack = () => JSON.stringify({ meta: state.meta, profiles: state.profiles, people: state.people, groups: state.groups, links: state.links, history: state.history })
 
 export function snapshot() {
   past.push(pack())

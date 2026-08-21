@@ -112,6 +112,13 @@ function detect(text) {
   return 'yaml'
 }
 
+/** Parse without applying (compare baseline). Returns { model, errors, kind }. */
+export function parseAny(text, { format = 'auto' } = {}) {
+  const kind = format === 'auto' ? detect(text) : format
+  const r = kind === 'json' ? parseJson(text) : kind === 'outline' ? normalizeDoc(parseOutline(text)) : parseYaml(text)
+  return { model: r.model, errors: r.errors, warnings: r.warnings, kind }
+}
+
 /** Parse + apply pasted or fetched text. Returns true on success; errors go to the YAML panel. */
 export function importText(text, { format = 'auto' } = {}) {
   return applyText(text, { format })

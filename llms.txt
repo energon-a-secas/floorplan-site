@@ -99,6 +99,19 @@ links:                        # doors (adjacent rooms) or corridors (apart)
 
 Percentages: a person's shares across all groups and bands add up; the roster shows the total and the Insights drawer flags anyone over 100% (and, softly, under). A share of 100 is the default; write `pct` only for splits. In the app every seat carries a share bar (drag it in 5% steps, arrow keys nudge it, the badge accepts a typed value).
 
+## Versions and comparing
+
+`history:` keeps dated snapshots of the whole document inside the document, so they travel with links, exports and `?src=` files:
+
+```yaml
+history:
+  - date: 2026-06-01
+    label: Before the reorg
+    doc: { title: ..., people: [...], groups: [...], bands: [...], links: [...] }   # a full document tree, minus history
+```
+
+In the app, **Versions** (toolbar) takes a snapshot of the current document, scrubs through snapshots, previews one read-only, restores it (undoable), and **compares now with** a snapshot or a pasted document. The board then marks who joined (green), who moved (amber, "from X"), whose share changed (+20), and draws ghost seats where someone left; the drawer's **Changes** tab lists moves, joins, leaves, share changes, group/people/link changes and rooms that moved. People and groups match by id (slug of the name), so two documents written independently still compare. A generated document can ship with a `history:` entry for the "before" state to hand a reviewer the diff in one link.
+
 ## Reuse: profiles and extends
 
 - `profiles:` is a map of partial group or person definitions. A group or person with `extends: name` (or a list, resolved left to right) deep-merges them: scalars override, `members` and `owns` concatenate (deduped by person, later `pct` wins). Profiles may extend profiles; cycles are reported.

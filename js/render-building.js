@@ -11,7 +11,7 @@
 import { state, ui, childrenOf } from './state.js'
 import { computeLayout } from './layout.js'
 import { escHtml } from './utils.js'
-import { seatHtml, vacantSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml } from './parts.js'
+import { seatHtml, vacantSeatsHtml, ghostSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml } from './parts.js'
 import { totals } from './parts.js'
 
 export function renderBuilding() {
@@ -63,10 +63,12 @@ function roomHtml(g, r, straddled) {
   const kids = childrenOf(g.id)
   const { vacant } = capacityInfo(g)
   const ownSeats = g.members.filter(m => !straddled.has(`${g.id}:${m.person}`)).map(m => seatHtml(g, m, { compact: true })).join('')
+    + ghostSeatsHtml(g, { compact: true })
     + vacantSeatsHtml(g, vacant, { compact: true })
   const isRoom = r.kind === 'room' || r.kind === 'band'
   const narrow = r.w < 2.5
-  const classes = ['room', `room--${r.kind}`, `depth-${Math.min(r.depth, 3)}`, g.kind === 'band' ? 'room--shared' : '', kids.length ? 'has-subs' : '', narrow ? 'room--narrow' : '', g.owns.length && r.kind === 'room' ? 'has-plaque' : ''].filter(Boolean).join(' ')
+  const gmark = ui.marks?.groups.get(g.id)
+  const classes = ['room', `room--${r.kind}`, `depth-${Math.min(r.depth, 3)}`, g.kind === 'band' ? 'room--shared' : '', kids.length ? 'has-subs' : '', narrow ? 'room--narrow' : '', g.owns.length && r.kind === 'room' ? 'has-plaque' : '', gmark ? 'diff-' + gmark : ''].filter(Boolean).join(' ')
   const head = groupHeadHtml(g, { showStats: !narrow && r.w >= 6, extra: isRoom ? `<span class="room-grip" data-room-handle="move" data-group="${g.id}" title="Drag to move the room" aria-hidden="true"></span>` : '' })
   const empty = !ownSeats && !kids.length
   return `<section class="${classes}" data-drop="group" data-group="${g.id}" style="${vars};z-index:${1 + r.depth}" data-svg="box" tabindex="0" aria-label="${g.kind === 'band' ? 'Shared space' : 'Room'} ${escHtml(g.name)}">

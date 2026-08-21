@@ -25,7 +25,7 @@ export function bindDnd() {
 }
 
 function onDown(e) {
-  if (e.button !== 0 || drag || ui.visiting || ui.readonly) return
+  if (e.button !== 0 || drag || ui.visiting || ui.readonly || ui.preview) return
   const bar = e.target.closest('[data-pct-bar]')
   if (bar) { startPct(bar, e); return }
   const handle = e.target.closest('[data-room-handle]')

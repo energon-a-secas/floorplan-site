@@ -50,6 +50,7 @@ Floorplan builds team maps. Drag people from a roster into groups and sub-groups
 - **Embeddable** -- `?embed=1&mode=building#d=...` in an iframe shows just the board (never touches the visitor's localStorage); `readonly=1` locks it; `fit=1` scales the building to the frame
 - **Agent-ready** -- `llms.txt` carries the schema, the rules that trip generated documents, the link recipe, and `schema.json` is the same tree as a JSON Schema
 - **Two examples** -- a nested team chart and an office building with explicit layout, bands and links; every name is fictional
+- **Versions and diff** -- dated snapshots stored inside the document (`history:`), a scrubber to preview them, restore with undo, and compare now with any snapshot or a pasted document: the board marks joined/moved/left/share changes and the Changes tab lists them
 - **Local only** -- localStorage, no account, no server; 40 steps of undo that survive Clear and example loads
 
 ---
@@ -125,6 +126,8 @@ floorplan-site/
 │   ├── schema.js           # normalize YAML/JSON -> model, profiles/extends, emit tree
 │   ├── yaml.js             # js-yaml in/out with the alias-identity clone
 │   ├── allocation.js       # totals, FTE, capacity, insights
+│   ├── diff.js             # diff two documents, marks for the board overlay
+│   ├── versions.js         # snapshots: take, preview, restore, compare
 │   ├── layout.js           # building packer: rects, bands, doors, corridors, straddles
 │   ├── render.js           # shell renderer + YAML panel + insights + detail sheet
 │   ├── render-diagram.js   # diagram view
