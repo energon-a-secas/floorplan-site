@@ -51,6 +51,7 @@ function onUp(e) {
     cleanupPerson(d)
     if (!d.committed) return            // a click: the click handler takes it
     const target = dropTargetAt(e.clientX, e.clientY)
+    ui.lastDrop = { x: e.clientX, y: e.clientY, t: performance.now() }   // Sim mode spawns a newcomer where they were dropped
     if (target) commitDrop(d.person, d.from, target, { split: e.altKey })
   } else if (d.kind === 'pct') {
     endPct(d, true)

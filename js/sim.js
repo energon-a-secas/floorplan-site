@@ -19,7 +19,7 @@ import { zoneFor } from './timezones.js'
 import { findPath, cellOf } from './path.js'
 import { decide, setOut, chatWith, triggerEvent, endEvent, EVENTS, onLayer } from './sim-brain.js'
 
-export const sim = { on: false, clock: null, speed: 1, selected: null, event: null, grid: null, layout: null, anchors: new Map(), timer: null, pausedAt: 0 }
+export const sim = { on: false, clock: null, playing: false, nextAdvance: 0, speed: 1, selected: null, event: null, grid: null, layout: null, anchors: new Map(), timer: null, pausedAt: 0 }
 export const actors = new Map()
 const TICK = 100
 export const now = () => performance.now()
@@ -93,7 +93,10 @@ function rebuild(layout) {
     a.homes = homes; a.home = Math.min(a.home, homes.length - 1)
     setLook(a)
     layer.appendChild(a.el)
-    if (a.state === 'desk' && !a.path.length) { const h = homes[a.home]; a.x = h.x; a.y = h.y; place(a) }
+    if (a.path.length) {   // the grid may have changed under a walker: re-route to the same destination
+      const last = a.path[a.path.length - 1], then = a.onArrive, st = a.state, run = a.stepMs < 200
+      if (!walkTo(a, last, { then, state: st, run })) { a.path = []; a.walking = false; a.onArrive = null; a.state = 'idle'; a.until = now() }
+    } else if (a.state === 'desk' || a.state === 'out') { const h = homes[a.home]; a.x = h.x; a.y = h.y; place(a) }
   }
   for (const [pid, a] of actors) if (!sim.anchors.has(pid)) { a.el.remove(); actors.delete(pid); if (sim.selected === a) select(null) }
   onLayer(layer)
@@ -118,18 +121,30 @@ export function measureAnchors() {
 function spawn(p, homes, index) {
   const el = document.createElement('div')
   el.className = 'actor'; el.dataset.actor = p.id
+  el.tabIndex = 0; el.setAttribute('role', 'button'); el.setAttribute('aria-label', `${p.name}: pick, then a colleague or the floor`)
   el.innerHTML = `<img alt="" draggable="false" width="32" height="32"><span class="actor-tag">${escHtml(p.name.split(/\s+/)[0])}</span><span class="bubble" hidden></span>`
+  const drop = ui.lastDrop && now() - ui.lastDrop.t < 1500 ? dropCell(ui.lastDrop) : null   // a person dropped on the floor starts where they landed
   const a = {
     id: p.id, el, img: el.firstElementChild, bubble: el.lastElementChild, homes, home: 0,
-    x: 0.5, y: sim.layout.rows - 0.5, path: [], walking: false, state: 'arrive', until: 0, nextAt: 0, stepMs: 260, frame: 0, face: 1,
-    offset: zoneFor(p)?.offset ?? null, out: false, bubbleUntil: 0, onArrive: null, spec: null, frames: [], task: null,
+    x: drop ? drop.x : 0.5, y: drop ? drop.y : sim.layout.rows - 0.5, path: [], walking: false, state: 'arrive', until: 0, nextAt: 0, stepMs: 260, frame: 0, face: 1,
+    offset: zoneFor(p)?.offset ?? null, out: false, bubbleUntil: 0, onArrive: null, spec: null, frames: [], task: null, partner: null,
+    energy: rand(0.5, 1), social: rand(0.4, 1), lunched: false,
   }
   setLook(a)
   place(a)
   layerEl().appendChild(el)
   actors.set(p.id, a)
-  a.until = now() + index * 160 + 200   // stream in one after another
+  a.until = now() + (drop ? 150 : index * 160 + 200)   // stream in one after another, or go straight to the desk
+  if (drop) say(a, 'hi!', 1500)
   return a
+}
+
+function dropCell(pt) {
+  const l = layerEl(); if (!l || !sim.layout) return null
+  const lr = l.getBoundingClientRect(), cell = lr.width / sim.layout.cols
+  const x = (pt.x - lr.left) / cell, y = (pt.y - lr.top) / cell
+  if (!(cell > 0) || x < 0 || y < 0 || x >= sim.layout.cols || y >= sim.layout.rows) return null
+  return { x: Math.floor(x) + 0.5, y: Math.floor(y) + 0.5 }
 }
 
 export function setLook(a) {
@@ -144,6 +159,13 @@ export function place(a) {
   a.el.style.setProperty('--x', a.x.toFixed(3))
   a.el.style.setProperty('--y', a.y.toFixed(3))
   a.el.classList.toggle('face-left', a.face < 0)
+  a.el.classList.toggle('is-away', !a.out && !atHome(a))   // the name shows over anyone not at their desk
+}
+
+/** Bring a room into view (the board scrolls, the page does not). */
+export function scrollToRoom(gid) {
+  const el = layerEl()?.querySelector(`.room[data-group="${gid}"]`); if (!el) return
+  el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center', inline: 'center' })
 }
 
 export const homeOf = a => a.homes[a.home] || a.homes[0]
@@ -204,8 +226,19 @@ export function inHours(a, h = hourUtc()) {
   const local = (((h + a.offset) % 24) + 24) % 24
   return local >= 9 && local < 17
 }
+/** The UTC half-hour with the most people inside their core hours. */
+export function peakHour() {
+  let best = 9, bestN = -1
+  for (let h = 0; h < 24; h += 0.5) { const n = [...actors.values()].filter(a => inHours(a, h)).length; if (n > bestN) { bestN = n; best = h } }
+  return best
+}
 let lastClockCheck = 0
 function applyClock(t) {
+  if (sim.playing && t >= sim.nextAdvance) {   // play the day: one half-hour per beat, round the clock
+    sim.clock = ((sim.clock ?? hourUtc()) + 0.5) % 24
+    sim.nextAdvance = t + dur(1400)
+    lastClockCheck = 0
+  }
   if (t - lastClockCheck < 1000) return
   lastClockCheck = t
   const h = hourUtc()
@@ -251,10 +284,7 @@ function onClick(e) {
   const actorEl = t.closest('.actor')
   if (actorEl) {
     e.preventDefault(); e.stopPropagation()
-    const a = actors.get(actorEl.dataset.actor); if (!a) return
-    if (!sim.selected) select(a)
-    else if (sim.selected === a) select(null)
-    else { chatWith(sim.selected, a); select(null) }
+    const a = actors.get(actorEl.dataset.actor); if (a) commandActor(a)
     return
   }
   const layer = t.closest('#buildingLayer')
@@ -268,31 +298,45 @@ function onClick(e) {
   select(null)
 }
 
+/** First pick selects, a second pick on someone else sends the first over to talk, the same one again clears. */
+function commandActor(a) {
+  if (!sim.selected) select(a)
+  else if (sim.selected === a) select(null)
+  else { chatWith(sim.selected, a); select(null) }
+}
+
 function onKey(e) {
-  if (e.key !== 'Escape' || !sim.selected) return
   const src = e.target instanceof Element ? e.target : document.body
   if (src.closest('input, textarea, select')) return
-  select(null)
+  if ((e.key === 'Enter' || e.key === ' ') && src.classList.contains('actor')) {
+    e.preventDefault(); e.stopPropagation()
+    const a = actors.get(src.dataset.actor); if (a) commandActor(a)
+    return
+  }
+  if (e.key === 'Escape' && sim.selected) select(null)
 }
 
 // ── The bar under the toolbar ────────────────────────────────
 function onBarClick(e) {
   const b = e.target instanceof Element ? e.target.closest('[data-sim]') : null; if (!b) return
   const what = b.dataset.sim
-  if (what === 'live') { sim.clock = null; const r = $('simClock'); if (r) r.value = String(Math.round(hourUtc() * 2) / 2); lastClockCheck = 0; renderBar(); return }
+  if (what === 'live') { sim.clock = null; sim.playing = false; const r = $('simClock'); if (r) r.value = String(Math.round(hourUtc() * 2) / 2); lastClockCheck = 0; renderBar(); return }
+  if (what === 'peak') { sim.clock = peakHour(); sim.playing = false; lastClockCheck = 0; renderBar(); return }
+  if (what === 'play') { sim.playing = !sim.playing; if (sim.playing && sim.clock === null) sim.clock = Math.round(hourUtc() * 2) / 2; sim.nextAdvance = 0; lastClockCheck = 0; renderBar(); return }
   if (what === 'speed') { sim.speed = Number(b.dataset.value) || 1; for (const a of actors.values()) a.el.style.setProperty('--step', `${dur(a.stepMs)}ms`); renderBar(); return }
   if (what === 'calm') { endEvent(); return }
   if (EVENTS[what]) { triggerEvent(what); return }
 }
-function onClockInput(e) { sim.clock = Number(e.target.value); lastClockCheck = 0; renderBar() }
+function onClockInput(e) { sim.clock = Number(e.target.value); sim.playing = false; lastClockCheck = 0; renderBar() }
 
 export function renderBar() {
   const bar = $('simBar'); if (!bar || !sim.on) return
   const h = hourUtc(), hh = String(Math.floor(h)).padStart(2, '0'), mm = String(Math.round((h % 1) * 60)).padStart(2, '0')
   const total = actors.size, inCount = [...actors.values()].filter(a => !a.out).length
   const label = $('simClockLabel'); if (label) label.textContent = `${hh}:${mm} UTC · ${inCount} of ${total} in`
-  const r = $('simClock'); if (r && sim.clock === null && document.activeElement !== r) r.value = String(Math.round(h * 2) / 2)
+  const r = $('simClock'); if (r && document.activeElement !== r) r.value = String(Math.round(h * 2) / 2)
   bar.querySelector('[data-sim="live"]')?.setAttribute('aria-pressed', String(sim.clock === null))
+  bar.querySelector('[data-sim="play"]')?.setAttribute('aria-pressed', String(sim.playing))
   bar.querySelectorAll('[data-sim="speed"]').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.value) === sim.speed)))
   for (const k of Object.keys(EVENTS)) bar.querySelector(`[data-sim="${k}"]`)?.setAttribute('aria-pressed', String(sim.event?.name === k))
   const calm = bar.querySelector('[data-sim="calm"]'); if (calm) calm.hidden = !sim.event
@@ -300,6 +344,7 @@ export function renderBar() {
   if (status) {
     if (sim.selected) status.innerHTML = `<strong>${escHtml(state.people[sim.selected.id]?.name || '')}</strong> selected: click a colleague to make them talk, the floor to send them there, <kbd>Esc</kbd> to cancel.`
     else if (sim.event) status.textContent = EVENTS[sim.event.name].status
-    else status.textContent = 'Click a character, then a colleague (they talk) or the floor (they walk there). Scrub the clock to see who is in.'
+    else if (sim.playing) status.textContent = 'Playing the day: watch the office hand over from zone to zone. Live or the slider stops it.'
+    else status.textContent = 'Click a character, then a colleague (they talk) or the floor (they walk there). Scrub the clock, or Peak for the fullest hour, or Play the day.'
   }
 }

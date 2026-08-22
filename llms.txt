@@ -48,7 +48,7 @@ The app runs inside an iframe; nothing is written to the visitor's localStorage 
 - `embed=readonly` (or `readonly=1`): no dragging, no edits, Insights and the detail sheet still work.
 - `mode=diagram|building`: overrides the document's `mode` for this view only.
 - `fit=1`: scales the building to the frame width (on by default in embed mode).
-- `sim=1`: starts Sim mode once the building is on screen (people walk in, work, chat, take breaks; a clock dims those outside core hours). `sim=party|coffee|earthquake|outage` also stirs that event a few seconds in. Building mode only; the sim is view-only and changes nothing in the document.
+- `sim=1`: starts Sim mode once the building is on screen (people walk in, work, chat, take breaks; a clock dims those outside core hours). `sim=party|coffee|earthquake|outage|firedrill` also stirs that event a few seconds in; `sim=` switches the view to the building for the session. Building mode only; the sim is view-only and changes nothing in the document.
 
 ## Two views of one document
 

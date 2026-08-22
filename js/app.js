@@ -33,6 +33,7 @@ function init() {
   }
   const mode = q.get('mode')
   if (mode === 'diagram' || mode === 'building') setMode(mode)
+  else if (ui.simStart !== null && state.meta.mode !== 'building') setMode('building')   // a sim needs the office
   render()
   if (ui.simStart !== null && state.meta.mode === 'building') import('./sim.js').then(m => m.startSim({ event: ui.simStart }))
   // A #d= link pasted over an open tab is a fragment change, not a load.
