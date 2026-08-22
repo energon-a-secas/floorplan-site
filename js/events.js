@@ -161,6 +161,7 @@ function runAction(action, el, e) {
     case 'toggle-avatars': snapshot(); setDisplay('avatars', state.meta.display.avatars === 'initials' ? 'pixel' : 'initials'); afterChange(); break
     case 'visit': toggleVisit(); break
     case 'sim': toggleSim(); break
+    case 'puzzle': togglePuzzle(); break
     case 'use-my-character': {
       const mine = myCharacter(); const pid = ui.selection?.type === 'person' ? ui.selection.id : null
       if (!mine || !pid) { showToast('No character in your Neorgon cookie yet: make one in Pixeldoll'); break }
@@ -394,8 +395,8 @@ function selectorFor(el) {
   return el.dataset.from ? `[data-seat="${CSS.escape(el.dataset.from)}:${p}"]` : `#rosterList [data-person="${p}"]`
 }
 
-function doUndo() { if (undo()) { ui.picked = null; afterChange(); showToast('Undone') } }
-function doRedo() { if (redo()) { ui.picked = null; afterChange(); showToast('Redone') } }
+function doUndo() { if (ui.puzzle) { showToast('Undo is off during the puzzle: move people back instead'); return } if (undo()) { ui.picked = null; afterChange(); showToast('Undone') } }
+function doRedo() { if (ui.puzzle) { showToast('Redo is off during the puzzle'); return } if (redo()) { ui.picked = null; afterChange(); showToast('Redone') } }
 
 // ── YAML panel ───────────────────────────────────────────────
 export function applyYaml() {
@@ -451,4 +452,9 @@ async function toggleVisit() {
 async function toggleSim() {
   const mod = await import('./sim.js')
   mod.toggleSim()
+}
+
+async function togglePuzzle() {
+  const mod = await import('./puzzle.js')
+  mod.togglePuzzle()
 }

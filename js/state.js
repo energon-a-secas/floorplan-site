@@ -34,6 +34,7 @@ export const ui = {
   visiting: false,
   simulating: false,  // Sim mode on (sim.js); view-only, never saved
   simStart: null,     // ?sim=1|party|coffee|earthquake|outage: start the sim after the first render
+  puzzle: false,      // the reorg puzzle is running (puzzle.js); undo is off meanwhile
   embed: false,       // ?embed=1: chrome hidden, nothing written to localStorage
   readonly: false,    // ?readonly=1: look, do not touch
   versionsOpen: false,

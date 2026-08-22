@@ -55,6 +55,7 @@ Floorplan builds team maps. Drag people from a roster into groups and sub-groups
 - **Skills and time zones** -- tags on people, needs on groups, a coverage check in Insights; locations or `tz:` feed a core-hours strip per group and a warning when a team shares fewer than three hours
 - **Templates, CSV, slides, print** -- start a squad, pod, platform team or shared rotation in one click; paste CSV with a header row; open the map as a Presentation Sage deck; print the board light on paper
 - **Versions and diff** -- dated snapshots stored inside the document (`history:`), a scrubber to preview them, restore with undo, and compare now with any snapshot or a pasted document: the board marks joined/moved/left/share changes and the Changes tab lists them
+- **Puzzle** -- the reorg game: the map gets scrambled and you put everyone back in the fewest moves, guided by the compare marks and the Changes tab; Hint flashes a wrong seat, Give up restores, best scores stay per document; with Sim on, people walk as you fix it
 - **Local only** -- localStorage, no account, no server; 40 steps of undo that survive Clear and example loads
 
 ---
@@ -151,6 +152,7 @@ floorplan-site/
 │   ├── sim.js              # Sim mode: actors, tick, clock, bar, click-to-command (lazy-loaded)
 │   ├── sim-brain.js        # routines and events: coffee, chat, sync, party, earthquake, outage
 │   ├── path.js             # BFS routes over the building grid
+│   ├── puzzle.js           # the reorg puzzle: scramble, compare marks as clues, moves, best (lazy-loaded)
 │   └── examples.js         # Example A and B
 ├── docs/architecture.mmd   # source of the diagram above
 ├── robots.txt, sitemap.xml, CNAME, Makefile

@@ -101,6 +101,9 @@ body.simulating .seat[data-person] > .px-avatar, body.simulating .seat[data-pers
 .sb-status { font-size: var(--text-xs); color: var(--text-muted); flex: 1 1 220px; }
 .sb-status kbd { font-size: 10px; }
 body.embed .sim-bar { display: none !important; }
+.puzzle-bar .sb-label { color: #fbbf24; }
+.puzzle-bar .sb-status { flex: 1 1 320px; color: var(--text-secondary); }
+.sb-dim { color: var(--text-muted); }
 
 @media (prefers-reduced-motion: reduce) {
   .actor { transition: opacity .3s; }
