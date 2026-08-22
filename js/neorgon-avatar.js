@@ -7,7 +7,7 @@
 //   { kind, skin, coat, hair, hairColor, eyes, face, outfit, shirt, head, accessory, held, pet }
 // Every value is an id from CATALOG (or a hex for skin/coat/hairColor/shirt).
 // A spec travels as a code: "neoav1:" + base64url(JSON). The code is what
-// the fleet cookie `neo_character` holds, what Paperdoll exports, and what
+// the fleet cookie `neo_character` holds, what Pixeldoll exports, and what
 // Floorplan's person sheet accepts. Parts carry a tier (common, rare,
 // legendary) and an `unlock` id; rendering never gates a part, only a
 // picker does, reading the `neo_unlocks` cookie.
@@ -117,8 +117,8 @@ function blit(px, rows, x0, y0, pal) {
   rows.forEach((row, dy) => { for (let dx = 0; dx < row.length; dx++) { const ch = row[dx]; if (ch === '.' || ch === ' ') continue; const c = pal[ch] ?? INK[ch]; if (c) px(x0 + dx, y0 + dy, c) } })
 }
 
-/** Draw the sprite at 1 unit per pixel onto ctx at (ox, oy), scaled by `scale`. */
-export function drawSprite(ctx, rawSpec, { x = 0, y = 0, scale = 1 } = {}) {
+/** Draw the sprite at 1 unit per pixel onto ctx at (ox, oy), scaled by `scale`. `frame` 0 stands, 1 and 2 are the two walking steps. */
+export function drawSprite(ctx, rawSpec, { x = 0, y = 0, scale = 1, frame = 0 } = {}) {
   const s = normalizeSpec(rawSpec)
   const px = (cx, cy, c) => { if (cx < 0 || cy < 0 || cx >= SIZE || cy >= SIZE) return; ctx.fillStyle = c; ctx.fillRect(x + cx * scale, y + cy * scale, scale, scale) }
   const pal = {
@@ -131,14 +131,19 @@ export function drawSprite(ctx, rawSpec, { x = 0, y = 0, scale = 1 } = {}) {
   if (s.accessory === 'cape') blit(px, ['..VV........VV..', '..VV........VV..', '..VVV......VVV..', '..VVVV....VVVV..', '..VVVVVVVVVVVV..', '...VVVVVVVVVV...'], 0, 10, pal)
   // 2. body + legs by kind
   if (s.kind === 'ghost') {
-    blit(px, ['.....WWWWWW.....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....W.WWWW.W....', '....W..WW..W....'], 0, 3, pal)
+    const tail = frame === 1 ? ['....WW.WW.WW....', '.....W....W.....'] : ['....W.WWWW.W....', '....W..WW..W....']
+    blit(px, ['.....WWWWWW.....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', '....WWWWWWWW....', ...tail], 0, 3, pal)
     px(6, 6, INK.K); px(9, 6, INK.K); px(7, 8, INK.m)
   } else {
     blit(px, outfitRows(s), 0, 10, pal)
-    // legs
+    // legs: frame 0 both planted, 1 lifts the right leg, 2 lifts the left
     const legs = s.kind === 'robot' ? 'm' : furry ? 'f' : 'n'
-    px(5, 14, INK[legs] || pal[legs]); px(6, 14, INK[legs] || pal[legs]); px(9, 14, INK[legs] || pal[legs]); px(10, 14, INK[legs] || pal[legs])
-    px(5, 15, INK[legs] || pal[legs]); px(6, 15, INK[legs] || pal[legs]); px(9, 15, INK[legs] || pal[legs]); px(10, 15, INK[legs] || pal[legs])
+    const L = INK[legs] || pal[legs]
+    px(5, 14, L); px(6, 14, L); px(9, 14, L); px(10, 14, L)
+    if (frame !== 1) { px(9, 15, L); px(10, 15, L) }
+    if (frame !== 2) { px(5, 15, L); px(6, 15, L) }
+    if (frame === 1) { px(4, 15, L) }
+    if (frame === 2) { px(11, 15, L) }
     // hands
     const hand = human ? 'S' : furry ? 'F' : 'M'
     px(3, 13, pal[hand] || INK[hand]); px(12, 13, pal[hand] || INK[hand])
@@ -245,13 +250,13 @@ function petRows(pet) {
 
 // ── Rasterize (cached) ───────────────────────────────────────
 const cache = new Map()
-export function spriteDataUrl(rawSpec, scale = 1) {
+export function spriteDataUrl(rawSpec, scale = 1, frame = 0) {
   const s = normalizeSpec(rawSpec)
-  const key = JSON.stringify(s) + '@' + scale
+  const key = JSON.stringify(s) + '@' + scale + (frame ? '#' + frame : '')
   if (cache.has(key)) return cache.get(key)
   if (typeof document === 'undefined') return ''
   const c = document.createElement('canvas'); c.width = SIZE * scale; c.height = SIZE * scale
-  drawSprite(c.getContext('2d'), s, { scale })
+  drawSprite(c.getContext('2d'), s, { scale, frame })
   const url = c.toDataURL('image/png')
   cache.set(key, url)
   return url

@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/diagram.css">
   <link rel="stylesheet" href="css/building.css">
+  <link rel="stylesheet" href="css/sim.css">
   <!-- Neorgon Header Kit (vendored; ?header=live swaps CSS to CDN). Keep after style.css: the kit owns the header. -->
   <script>(function(){var m=location.search.match(/[?&]theme=([\w-]+)/)||document.cookie.match(/(?:^|;\s*)neo_theme=([\w-]+)/);if(m&&m[1]!=='default')document.documentElement.dataset.theme=decodeURIComponent(m[1]);})();</script>
   <link rel="stylesheet" href="css/neorgon-header.css">
@@ -182,11 +183,36 @@
               <button type="button" class="btn btn--ghost btn--sm" id="fitBtn" data-action="fit" aria-pressed="false" title="Scale the building to the board width">Fit</button>
               <button type="button" class="btn btn--ghost btn--sm" data-action="relayout" title="Clear every room's saved position and let the packer place them">Auto layout</button>
               <button type="button" class="btn btn--ghost btn--sm btn--visit" id="visitBtn" data-action="visit" aria-pressed="false" title="Walk the office with WASD or the arrows">Visit</button>
+              <button type="button" class="btn btn--ghost btn--sm btn--sim" id="simBtn" data-action="sim" aria-pressed="false" title="Bring the office to life: people work, chat, take breaks; stir it with a party, an earthquake or an outage">Sim</button>
             </span>
             <button type="button" class="btn btn--ghost btn--sm btn--clear" data-action="clear" title="Clear the board (undoable)">Clear</button>
           </div>
         </div>
         <div class="versions-bar" id="versionsBar" hidden></div>
+        <div class="sim-bar" id="simBar" hidden aria-label="Sim controls">
+          <span class="sb-label">Sim</span>
+          <span class="sb-group">
+            <span class="sb-key">Clock</span>
+            <button type="button" class="sb-chip" data-sim="live" aria-pressed="true" title="Follow the real clock">Live</button>
+            <input type="range" id="simClock" min="0" max="23.5" step="0.5" value="12" aria-label="UTC hour, scrub to see who is in">
+            <span class="sb-clock" id="simClockLabel"></span>
+          </span>
+          <span class="sb-group">
+            <span class="sb-key">Stir it</span>
+            <button type="button" class="sb-chip" data-sim="party" aria-pressed="false">Party</button>
+            <button type="button" class="sb-chip" data-sim="coffee" aria-pressed="false">Coffee break</button>
+            <button type="button" class="sb-chip" data-sim="earthquake" aria-pressed="false">Earthquake</button>
+            <button type="button" class="sb-chip" data-sim="outage" aria-pressed="false">Outage</button>
+            <button type="button" class="sb-chip sb-chip--calm" data-sim="calm" hidden>All clear</button>
+          </span>
+          <span class="sb-group">
+            <span class="sb-key">Speed</span>
+            <button type="button" class="sb-chip" data-sim="speed" data-value="1" aria-pressed="true">1x</button>
+            <button type="button" class="sb-chip" data-sim="speed" data-value="2" aria-pressed="false">2x</button>
+            <button type="button" class="sb-chip" data-sim="speed" data-value="4" aria-pressed="false">4x</button>
+          </span>
+          <span class="sb-status" id="simStatus" aria-live="polite"></span>
+        </div>
         <div class="preview-banner" id="previewBanner" hidden></div>
         <div class="doc-notes md-preview" id="docNotes" hidden></div>
         <div class="board" id="board" data-mode="diagram"></div>
@@ -246,7 +272,7 @@
     <div class="modal__body help-body">
       <p><strong>Groups</strong> hold people. A group inside a group is a sub-group. A <strong>shared space</strong> (band) spans several groups: a QA pool, an on-call rotation, shared efforts.</p>
       <p><strong>Percentages.</strong> Drop with <kbd>Alt</kbd> held to split a person between two groups. Every seat has a share bar: drag it (5% steps), or focus it and nudge with the arrows; click the <em>NN%</em> badge to type a value. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
-      <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner. <strong>Visit</strong> lets you walk it.</p>
+      <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner. <strong>Visit</strong> lets you walk it. <strong>Sim</strong> brings it to life: everyone walks in, works, fetches coffee in a shared space, chats, holds team syncs; a split person hops between desks. Click a character, then a colleague to make them talk or the floor to send them there. The clock dims people outside their 09:00 to 17:00 local; stir the floor with a party, a coffee break, an earthquake or an outage (the responders are the room that owns it plus every shared space that spans it). Nothing from the sim lands in the document.</p>
       <p><strong>Teams that work.</strong> Give people <em>tags</em> and groups <em>needs</em>; Insights flags a group missing a skill. Locations (or a <em>time zone</em>) feed a core-hours strip in the group sheet and an Insight when a team shares fewer than three hours. <strong>Templates</strong> start a squad, a pod, a platform team or a shared rotation in one click; <strong>CSV</strong> pastes straight in.</p>
       <p><strong>Display.</strong> Per document: center seats in their box, show shares as bars, badges only or hide them, let a cat or a dog keep an open seat, pixel sprites or initials, order seats by name or share, hide locations. Each person's avatar has presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; everything lands in the YAML.</p>
       <p><strong>Versions.</strong> Snapshot the document before a change (it is stored inside the YAML as <code>history:</code>, so it travels with links and exports). Scrub through snapshots, restore one, or <strong>compare now</strong> with a snapshot or a pasted document: the board marks who moved, joined, left, and whose share changed; the Changes tab lists it all.</p>
@@ -258,6 +284,7 @@
         <dt><kbd>Esc</kbd></dt><dd>drop what you carry, close panels, leave Visit mode</dd>
         <dt><kbd>Cmd/Ctrl+Z</kbd></dt><dd>undo (40 steps, includes Clear and loading an example); <kbd>Shift</kbd> redoes</dd>
         <dt><kbd>W A S D</kbd> / arrows</dt><dd>walk, in Visit mode</dd>
+        <dt>click, click</dt><dd>in Sim mode: a character, then a colleague (they talk) or the floor (they walk there); <kbd>Esc</kbd> clears the pick</dd>
         <dt><kbd>?</kbd></dt><dd>this card</dd>
       </dl>
     </div>

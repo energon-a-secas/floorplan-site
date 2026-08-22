@@ -33,6 +33,8 @@ flowchart TB
         render --> alloc["allocation.js\nTotals, FTE, insights"]
         events --> exportm["export.js + image-export.js\nYAML/JSON/MD/Mermaid/SVG/PNG, #d= link"]
         events -.lazy.-> visit["visit.js\nWalk the office"]
+        events -.lazy.-> sim["sim.js + sim-brain.js\nActors, routines, events, clock"]
+        sim --> path["path.js\nBFS over passableGrid()"]
         state --> schema["schema.js\nnormalizeDoc, profiles/extends, emit"]
         schema --> yaml["yaml.js\njs-yaml in/out"]
         exportm --> markdown["markdown.js\nNotes, outline import/export"]

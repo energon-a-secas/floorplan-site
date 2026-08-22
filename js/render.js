@@ -79,6 +79,7 @@ export function renderToolbar() {
   })
   const scale = $('scaleRange'); if (scale) scale.value = String(ui.scale)
   $('visitBtn')?.setAttribute('aria-pressed', String(ui.visiting))
+  $('simBtn')?.setAttribute('aria-pressed', String(ui.simulating))
   $('fitBtn')?.setAttribute('aria-pressed', String(ui.fit))
   document.body.classList.toggle('embed', ui.embed)
   document.body.classList.toggle('readonly', ui.readonly)

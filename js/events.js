@@ -128,7 +128,7 @@ function onClick(e) {
   if (t.closest('.room--title')) { select('group', t.closest('.room--title').dataset.group); return }
 }
 
-const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'help', 'dialog-close', 'fit', 'share', 'toggle-versions', 'preview-version', 'exit-preview', 'drawer-tab', 'compare-clear', 'compare-load', 'import-close', 'import-apply', 'import-file'])
+const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'sim', 'help', 'dialog-close', 'fit', 'share', 'toggle-versions', 'preview-version', 'exit-preview', 'drawer-tab', 'compare-clear', 'compare-load', 'import-close', 'import-apply', 'import-file'])
 const PREVIEW_OK = new Set([...VIEW_ACTIONS, 'restore-version', 'delete-version', 'snapshot-now'])
 function runAction(action, el, e) {
   const id = el.dataset.id
@@ -160,6 +160,7 @@ function runAction(action, el, e) {
     case 'clear': snapshot(); clearAll(); ui.selection = null; ui.picked = null; afterChange(); showToast('Board cleared. Cmd/Ctrl+Z brings it back'); break
     case 'toggle-avatars': snapshot(); setDisplay('avatars', state.meta.display.avatars === 'initials' ? 'pixel' : 'initials'); afterChange(); break
     case 'visit': toggleVisit(); break
+    case 'sim': toggleSim(); break
     case 'use-my-character': {
       const mine = myCharacter(); const pid = ui.selection?.type === 'person' ? ui.selection.id : null
       if (!mine || !pid) { showToast('No character in your Neorgon cookie yet: make one in Pixeldoll'); break }
@@ -216,6 +217,7 @@ function focusRef(type, id) {
 function switchMode(mode) {
   if (mode === state.meta.mode) return
   if (ui.visiting) toggleVisit()
+  if (ui.simulating) toggleSim()
   snapshot(); setMode(mode); afterChange()
 }
 
@@ -444,4 +446,9 @@ async function toggleVisit() {
   const mod = await import('./visit.js')
   if (ui.visiting) mod.stopVisit(); else mod.startVisit()
   renderToolbar()
+}
+
+async function toggleSim() {
+  const mod = await import('./sim.js')
+  mod.toggleSim()
 }

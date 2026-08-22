@@ -32,6 +32,8 @@ export const ui = {
   fit: false,         // building view: scale to the board width
   avatars: true,
   visiting: false,
+  simulating: false,  // Sim mode on (sim.js); view-only, never saved
+  simStart: null,     // ?sim=1|party|coffee|earthquake|outage: start the sim after the first render
   embed: false,       // ?embed=1: chrome hidden, nothing written to localStorage
   readonly: false,    // ?readonly=1: look, do not touch
   versionsOpen: false,

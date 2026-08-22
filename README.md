@@ -44,10 +44,11 @@ Floorplan builds team maps. Drag people from a roster into groups and sub-groups
 - **Diagram view** -- nested boxes, columns per group, bands as strips across the columns they cover
 - **Building view** -- rooms on a 24-column grid, auto-packed or placed with `layout: {x, y, w, h}`; doors where linked rooms touch, corridors where they do not; a person split across two touching rooms sits on the shared wall; drag rooms by the grip, resize from the corner
 - **Visit mode** -- walk a pixel avatar through the building with WASD or the arrows; walls block, doors let you through, standing next to a desk shows that person's card
+- **Sim mode** -- the office comes alive: everyone walks in, works at their desk, fetches coffee in a shared space, chats with a colleague, holds a team sync, and a split person hops between desks; a clock (live or scrubbed) dims people outside their 09:00 to 17:00 local; click a character, then a colleague to make them talk or the floor to send them there; stir it with a party (confetti in the biggest shared space), a coffee break, an earthquake (everyone out to the yard) or an outage (the owning room plus the shared spaces that span it respond); walk frames come from the shared Avatar Kit
 - **YAML with reuse** -- `profiles:` + `extends:` deep-merge (scalars override, members and owns concatenate); anchors and `<<:` merges work too; visual edits regenerate the YAML without flattening `extends`
 - **Markdown** -- notes on people, groups and the document; paste a markdown outline (`## Group`, `- Name (50%) @Location`) to import; the Markdown export writes the same syntax back
 - **Exports** -- YAML, JSON, Markdown, Mermaid, SVG, PNG (2x), a `#d=` share link that carries the document, and "Copy as prompt for Claude"; `?src=<url>` loads a hosted file
-- **Embeddable** -- `?embed=1&mode=building#d=...` in an iframe shows just the board (never touches the visitor's localStorage); `readonly=1` locks it; `fit=1` scales the building to the frame
+- **Embeddable** -- `?embed=1&mode=building#d=...` in an iframe shows just the board (never touches the visitor's localStorage); `readonly=1` locks it; `fit=1` scales the building to the frame; `sim=1` (or `sim=party`) starts Sim mode in the frame
 - **Agent-ready** -- `llms.txt` carries the schema, the rules that trip generated documents, the link recipe, and `schema.json` is the same tree as a JSON Schema
 - **Two examples** -- a nested team chart and an office building with explicit layout, bands and links; every name is fictional
 - **Avatars and display** -- 16x16 characters from the shared Neorgon Avatar Kit: presets in the person sheet, "Use my character" from your Pixeldoll cookie, paste a `neoav1:` code, or "Design in Pixeldoll"; per-document display options: center seats in a box, shares as bars / badges / hidden, a cat or dog keeping an open seat, pixel or initials, order by name or share, locations on or off
@@ -122,7 +123,8 @@ floorplan-site/
 ├── css/
 │   ├── style.css           # app shell, roster, seats, panels, sheets, drawer
 │   ├── diagram.css         # nested-box view
-│   └── building.css        # pixel office: rooms, walls, doors, corridors, desks, visitor
+│   ├── building.css        # pixel office: rooms, walls, doors, corridors, desks, visitor
+│   └── sim.css             # Sim mode: actors, bubbles, events, the bar
 ├── js/
 │   ├── app.js              # entry point: URL, saved session or example, then render
 │   ├── state.js            # model, mutations, localStorage, undo/redo
@@ -146,6 +148,9 @@ floorplan-site/
 │   ├── image-export.js     # SVG + PNG from the measured DOM
 │   ├── markdown.js         # escape-first renderer, outline import/export
 │   ├── visit.js            # walk the office (lazy-loaded)
+│   ├── sim.js              # Sim mode: actors, tick, clock, bar, click-to-command (lazy-loaded)
+│   ├── sim-brain.js        # routines and events: coffee, chat, sync, party, earthquake, outage
+│   ├── path.js             # BFS routes over the building grid
 │   └── examples.js         # Example A and B
 ├── docs/architecture.mmd   # source of the diagram above
 ├── robots.txt, sitemap.xml, CNAME, Makefile

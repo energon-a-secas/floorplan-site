@@ -10,10 +10,12 @@ export {
   showToast, copyText, downloadBlob, downloadText,
 } from './neorgon-dom.js'
 
-/** Cached element lookup by id. */
+/** Cached element lookup by id. The board re-creates #buildingLayer on every render, so a cached element is only trusted while it is still in the document. */
 const _els = {}
 export function $(id) {
-  return _els[id] || (_els[id] = document.getElementById(id))
+  const el = _els[id]
+  if (el && el.isConnected) return el
+  return (_els[id] = document.getElementById(id))
 }
 
 /** "Team Kestrel" -> "team-kestrel". Stable, ASCII, max 48 chars. */
