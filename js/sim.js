@@ -93,14 +93,42 @@ function rebuild(layout) {
     a.homes = homes; a.home = Math.min(a.home, homes.length - 1)
     setLook(a)
     layer.appendChild(a.el)
-    if (a.path.length) {   // the grid may have changed under a walker: re-route to the same destination
-      const last = a.path[a.path.length - 1], then = a.onArrive, st = a.state, run = a.stepMs < 200
-      if (!walkTo(a, last, { then, state: st, run })) { a.path = []; a.walking = false; a.onArrive = null; a.state = 'idle'; a.until = now() }
-    } else if (a.state === 'desk' || a.state === 'out') { const h = homes[a.home]; a.x = h.x; a.y = h.y; place(a) }
+    if (a.path.length) reroute(a)
+    else if (a.state === 'desk' || a.state === 'out') { const h = homes[a.home]; a.x = h.x; a.y = h.y; place(a) }
   }
-  for (const [pid, a] of actors) if (!sim.anchors.has(pid)) { a.el.remove(); actors.delete(pid); if (sim.selected === a) select(null) }
+  for (const [pid, a] of actors) {
+    if (sim.anchors.has(pid)) continue
+    if (!a.guest) { a.el.remove(); actors.delete(pid); if (sim.selected === a) select(null); continue }
+    layer.appendChild(a.el)   // a guest has no desk: keep them on the new layer
+    if (a.path.length) reroute(a)
+  }
   onLayer(layer)
 }
+
+/** The grid may have changed under a walker: re-route to the same destination, or give up and idle. */
+function reroute(a) {
+  const last = a.path[a.path.length - 1], then = a.onArrive, st = a.state, run = a.stepMs < 200
+  if (!walkTo(a, last, { then, state: st, run })) { a.path = []; a.walking = false; a.onArrive = null; a.state = 'idle'; a.until = now() }
+}
+
+/** An extra actor that is not one of the people (the tour visitor). Survives re-renders, removed by removeGuests(). */
+export function spawnGuest(spec, name = 'Guest') {
+  const el = document.createElement('div')
+  el.className = 'actor is-guest'; el.dataset.actor = '__guest_' + Math.random().toString(36).slice(2, 7)
+  el.setAttribute('aria-label', name)
+  el.innerHTML = `<img alt="" draggable="false" width="32" height="32"><span class="actor-tag">${escHtml(name)}</span><span class="bubble" hidden></span>`
+  const a = {
+    id: el.dataset.actor, el, img: el.firstElementChild, bubble: el.lastElementChild, homes: [], home: 0, guest: true,
+    x: 0.5, y: sim.layout.rows - 0.5, path: [], walking: false, state: 'idle', until: Infinity, nextAt: 0, stepMs: 250, frame: 0, face: 1,
+    offset: null, out: false, bubbleUntil: 0, onArrive: null, spec, frames: [0, 1, 2].map(f => spriteDataUrl(spec, 1, f)), task: null, partner: null, energy: 1, social: 1, lunched: true,
+  }
+  a.img.src = a.frames[0]
+  place(a)
+  layerEl()?.appendChild(el)
+  actors.set(a.id, a)
+  return a
+}
+export function removeGuests() { for (const [id, a] of actors) if (a.guest) { a.el.remove(); actors.delete(id) } }
 
 export function measureAnchors() {
   const layer = layerEl(); const map = new Map()
@@ -192,7 +220,7 @@ function step(a, t) {
   a.frame = a.frame === 1 ? 2 : 1
   a.img.src = a.frames[a.frame]
   place(a)
-  a.nextAt = (t - a.nextAt > dur(a.stepMs) * 8 ? t : a.nextAt) + dur(a.stepMs)   // steady cadence; reset when far behind
+  a.nextAt = (t - a.nextAt > Math.max(dur(a.stepMs) * 8, 1500) ? t : a.nextAt) + dur(a.stepMs)   // steady cadence; catch up to 1.5s of lag, reset beyond
 }
 
 function arrived(a, t) {
@@ -229,7 +257,7 @@ export function inHours(a, h = hourUtc()) {
 /** The UTC half-hour with the most people inside their core hours. */
 export function peakHour() {
   let best = 9, bestN = -1
-  for (let h = 0; h < 24; h += 0.5) { const n = [...actors.values()].filter(a => inHours(a, h)).length; if (n > bestN) { bestN = n; best = h } }
+  for (let h = 0; h < 24; h += 0.5) { const n = [...actors.values()].filter(a => !a.guest && inHours(a, h)).length; if (n > bestN) { bestN = n; best = h } }
   return best
 }
 let lastClockCheck = 0
@@ -242,7 +270,7 @@ function applyClock(t) {
   if (t - lastClockCheck < 1000) return
   lastClockCheck = t
   const h = hourUtc()
-  for (const a of actors.values()) { const inh = inHours(a, h); if (inh === a.out) setOut(a, !inh) }
+  for (const a of actors.values()) { if (a.guest) continue; const inh = inHours(a, h); if (inh === a.out) setOut(a, !inh) }
   renderBar()
 }
 
@@ -251,7 +279,7 @@ function tick() {
   if (!sim.on || sim.pausedAt) return
   const t = now()
   for (const a of actors.values()) {
-    if (a.path.length) { let n = 0; while (a.path.length && t >= a.nextAt && n++ < 8) step(a, t); continue }   // catch up after a throttled or paused tab
+    if (a.path.length) { let n = 0; while (a.path.length && t >= a.nextAt && n++ < 24) step(a, t); continue }   // catch up after a throttled or paused tab
     if (a.walking) { if (t >= a.nextAt) arrived(a, t); continue }
     if (a.bubbleUntil && t >= a.bubbleUntil) hush(a)
     if (!a.out && t >= a.until) decide(a, t)
@@ -284,7 +312,7 @@ function onClick(e) {
   const actorEl = t.closest('.actor')
   if (actorEl) {
     e.preventDefault(); e.stopPropagation()
-    const a = actors.get(actorEl.dataset.actor); if (a) commandActor(a)
+    const a = actors.get(actorEl.dataset.actor); if (a && !a.guest) commandActor(a)
     return
   }
   const layer = t.closest('#buildingLayer')
@@ -332,7 +360,8 @@ function onClockInput(e) { sim.clock = Number(e.target.value); sim.playing = fal
 export function renderBar() {
   const bar = $('simBar'); if (!bar || !sim.on) return
   const h = hourUtc(), hh = String(Math.floor(h)).padStart(2, '0'), mm = String(Math.round((h % 1) * 60)).padStart(2, '0')
-  const total = actors.size, inCount = [...actors.values()].filter(a => !a.out).length
+  const people = [...actors.values()].filter(a => !a.guest)
+  const total = people.length, inCount = people.filter(a => !a.out).length
   const label = $('simClockLabel'); if (label) label.textContent = `${hh}:${mm} UTC · ${inCount} of ${total} in`
   const r = $('simClock'); if (r && document.activeElement !== r) r.value = String(Math.round(h * 2) / 2)
   bar.querySelector('[data-sim="live"]')?.setAttribute('aria-pressed', String(sim.clock === null))

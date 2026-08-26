@@ -9,7 +9,8 @@
 
 import { state, membershipsOf } from './state.js'
 import { showToast } from './utils.js'
-import { sim, actors, walkTo, say, hush, homeOf, atHome, setLook, place, rand, pick, dur, now, layerEl, renderBar, hourUtc, scrollToRoom } from './sim.js'
+import { sim, actors, walkTo, say, hush, homeOf, atHome, setLook, place, rand, pick, dur, now, layerEl, renderBar, hourUtc, scrollToRoom, spawnGuest, removeGuests } from './sim.js'
+import { avatarSpec } from './avatar.js'
 import { interiorCells, yardCells, besideCells, spreadCells, cellOf, manhattan } from './path.js'
 
 const IDLE = ['...', 'hmm', 'ok', 'lgtm', 'brb', 'focus', 'typing']
@@ -23,6 +24,10 @@ const QUAKE = ['!!', 'whoa', 'run!', 'hold on', 'out!']
 const AFTER = ['ok?', 'phew', 'all good', 'wild']
 const OUTAGE = ['5xx', 'wat', 'rollback', 'logs?', 'on it', 'paging', 'retry', 'who?']
 const FIXED = ['fixed!', 'phew', 'ship', 'postmortem']
+const GUEST = ['hello!', 'nice', 'so this is', 'ooh', 'and here?', 'lovely', 'noted']
+const GREET = ['hi!', 'welcome', 'hello', 'o/', 'hey', 'come in']
+const DEMO = ['demo!', 'live', 'as you see', 'one sec', 'works!', 'questions?', 'ship it', 'next slide']
+const CLAP = ['clap', 'nice', 'wow', '+1', 'ooh', 'ship it', 'again!', 'ha']
 
 export const EVENTS = {
   party: { label: 'Party', status: 'Party! Everyone heads for the shared space. It ends on its own, or press All clear.' },
@@ -30,13 +35,16 @@ export const EVENTS = {
   earthquake: { label: 'Earthquake', status: 'Earthquake: everyone out to the yard until it stops shaking.' },
   outage: { label: 'Outage', status: 'Outage: the responders run to the room that owns it.' },
   firedrill: { label: 'Fire drill', status: 'Fire drill: everyone walks out to the yard, no running, and back when it ends.' },
+  tour: { label: 'Visitor tour', status: 'Visitor tour: a guest walks every room and the people there greet them. The office keeps working.' },
+  demo: { label: 'Demo day', status: 'Demo day: everyone gathers in the biggest room, one person presents, the rest react.' },
 }
 
 const syncs = new Map()   // group id -> until, one sync at a time per group
 
 // ── Idle routine ─────────────────────────────────────────────
 export function decide(a, t) {
-  if (sim.event) { eventIdle(a, t); return }
+  if (a.guest) { a.until = t + dur(1000); return }   // the tour drives the guest through callbacks
+  if (sim.event && sim.event.name !== 'tour') { eventIdle(a, t); return }   // a tour does not stop the office
   if (a.state === 'arrive') { goHome(a, t); return }
   if (a.state === 'chatting') {   // wait for the one walking over, unless they gave up (went offline, got pulled away)
     const p = actors.get(a.partner)
@@ -104,7 +112,7 @@ function goForBreak(a, t, pool, ms, task) {
   return ok
 }
 
-const free = a => !a.out && !a.path.length && !a.walking && !a.task && ['desk', 'idle'].includes(a.state)
+const free = a => !a.guest && !a.out && !a.path.length && !a.walking && !a.task && ['desk', 'idle'].includes(a.state)
 const release = a => { a.task = null; a.partner = null }
 const shareGroup = (a, b) => { const ga = new Set(membershipsOf(a.id).map(m => m.group.id)); return membershipsOf(b.id).some(m => ga.has(m.group.id)) }
 
@@ -195,9 +203,9 @@ export function triggerEvent(name) {
   if (!EVENTS[name] || !sim.on) return
   if (sim.event) endEvent(true)
   const t = now()
-  const present = [...actors.values()].filter(a => !a.out)
-  for (const a of present) { a.path = []; a.walking = false; a.onArrive = null; release(a); a.el.classList.remove('is-working') }
-  const run = { party, coffee: coffeeBreak, earthquake, outage, firedrill }
+  const present = [...actors.values()].filter(a => !a.out && !a.guest)
+  if (name !== 'tour') for (const a of present) { a.path = []; a.walking = false; a.onArrive = null; release(a); a.el.classList.remove('is-working') }
+  const run = { party, coffee: coffeeBreak, earthquake, outage, firedrill, tour, demo }
   const ms = run[name](present, t)
   sim.event = { name, until: t + dur(ms) }
   renderBar()
@@ -211,23 +219,92 @@ export function endEvent(silent = false) {
   setLayer([])
   const t = now()
   for (const a of actors.values()) {
-    release(a); a.el.classList.remove('is-dancing', 'is-panic', 'is-responder')
+    if (a.guest) continue
+    release(a); a.presenting = false; a.el.classList.remove('is-dancing', 'is-panic', 'is-responder', 'is-presenting', 'is-waving', 'is-clapping')
     if (a.out) continue
+    if (ev.name === 'tour') continue   // nobody moved for the tour; let them be
     a.path = []; a.walking = false; a.onArrive = null
-    if (!silent && Math.random() < 0.5) say(a, pick(ev.name === 'outage' ? FIXED : ev.name === 'earthquake' || ev.name === 'firedrill' ? AFTER : ['back', 'ok', 'work']), 2000)
+    if (!silent && Math.random() < 0.5) say(a, pick(ev.name === 'outage' ? FIXED : ev.name === 'earthquake' || ev.name === 'firedrill' ? AFTER : ev.name === 'demo' ? ['nice one', 'back', 'ship it'] : ['back', 'ok', 'work']), 2000)
     a.state = 'idle'; a.until = t + dur(rand(300, 2500))
   }
-  if (!silent) showToast(ev.name === 'outage' ? 'Outage resolved. Everyone drifts back' : ev.name === 'earthquake' || ev.name === 'firedrill' ? 'All clear. Back inside' : 'Back to work')
+  removeGuests()
+  if (!silent) showToast(ev.name === 'outage' ? 'Outage resolved. Everyone drifts back' : ev.name === 'earthquake' || ev.name === 'firedrill' ? 'All clear. Back inside' : ev.name === 'tour' ? 'The visitor has left' : ev.name === 'demo' ? 'Demo over. Back to work' : 'Back to work')
   renderBar()
 }
 
 function eventIdle(a, t) {
   const name = sim.event.name
   if (a.task !== name) { if (name === 'outage' && Math.random() < 0.2) say(a, '?', 1500); a.until = t + dur(rand(3000, 8000)); return }
+  if (name === 'demo') {
+    if (a.presenting) { if (Math.random() < 0.6) say(a, pick(DEMO), 1700) }
+    else if (Math.random() < 0.35) { say(a, pick(CLAP), 1400); a.el.classList.add('is-clapping'); setTimeout(() => a.el.classList.remove('is-clapping'), dur(800)) }
+    a.until = t + dur(rand(1500, 3200)); return
+  }
   const pool = name === 'party' ? PARTY : name === 'coffee' ? COFFEE : name === 'earthquake' ? (shakeTimer ? QUAKE : AFTER) : name === 'firedrill' ? DRILL : OUTAGE
   if (Math.random() < (name === 'party' ? 0.55 : 0.4)) say(a, pick(pool), 1600)
   if (name === 'party' && a.el.classList.contains('is-dancing') && Math.random() < 0.4) { a.face = -a.face; place(a) }
   a.until = t + dur(rand(1200, 3000))
+}
+
+/** A guest walks every room and band in reading order; the people in each greet them; then the guest leaves. */
+function tour(present, t) {
+  const stops = Object.entries(sim.layout.rects).filter(([id, r]) => (r.kind === 'room' || r.kind === 'band') && state.groups[id]).sort(([, a], [, b]) => a.y - b.y || a.x - b.x)
+  if (!stops.length) { showToast('No rooms to tour'); return 1 }
+  const guest = spawnGuest(avatarSpec('Guest of honour', { kind: 'person', outfit: 'suit', accessory: 'badge', hair: 'side', eyes: 'wide', held: 'none', head: 'none', pet: 'none' }, '#f4efe6'), 'visitor')
+  let i = 0
+  const next = () => {
+    if (!sim.on || sim.event?.name !== 'tour' || !actors.has(guest.id)) return
+    if (i >= stops.length) {
+      say(guest, 'bye!', 1800)
+      walkTo(guest, { x: 0.5, y: sim.layout.rows - 0.5 }, { state: 'walk', then: () => { if (sim.event?.name === 'tour') endEvent() } })
+      return
+    }
+    const [id, r] = stops[i++]
+    const cells = interiorCells(r)
+    const c = cells.length ? spreadCells(cells, 1, { x: r.x + r.w / 2, y: r.y + r.h / 2 })[0] : { x: Math.floor(r.x + r.w / 2), y: Math.floor(r.y + r.h / 2) }
+    const ok = walkTo(guest, { x: c.x + 0.5, y: c.y + 0.5 }, { state: 'walk', then: act => {
+      const grp = state.groups[id]; if (!grp) { next(); return }
+      showToast(`Visiting ${grp.name}${grp.owns.length ? `: owns ${grp.owns.slice(0, 3).join(', ')}` : ''}`)
+      say(act, pick(GUEST), 1800)
+      scrollToRoom(id)
+      for (const a of actors.values()) {
+        if (a.guest || a.out) continue
+        if (sim.grid.ownerAt(Math.floor(a.x), Math.floor(a.y)) !== id) continue
+        a.face = act.x < a.x ? -1 : 1; place(a)
+        say(a, pick(GREET), 1600)
+        a.el.classList.add('is-waving'); setTimeout(() => a.el.classList.remove('is-waving'), dur(1800))
+      }
+      setTimeout(next, dur(3400))
+    } })
+    if (!ok) next()
+  }
+  setTimeout(next, dur(400))
+  showToast('A visitor arrives for a tour')
+  return stops.length * 9000 + 20000   // a safety net; the tour ends itself when the guest leaves
+}
+
+/** Everyone gathers in the biggest room; one person from that room presents at the front, the rest face them. */
+function demo(present, t) {
+  const spot = biggest('room') || biggest('band')
+  if (!spot) { showToast('No room for a demo'); return 1 }
+  const cells = interiorCells(spot.r)
+  const presenter = present.find(a => a.homes.some(h => h.group === spot.id)) || present[0]
+  if (!presenter) { showToast('Nobody in to present'); return 1 }
+  const front = { x: Math.floor(spot.r.x + spot.r.w / 2), y: Math.ceil(spot.r.y) + 1 }
+  const behind = cells.filter(c => c.y > front.y)
+  const spots = spreadCells(behind.length >= present.length - 1 ? behind : cells, present.length, { x: front.x, y: front.y + 1.5 })
+  present.forEach((a, i) => {
+    a.task = 'demo'
+    if (a === presenter) {
+      walkTo(a, { x: front.x + 0.5, y: front.y + 0.5 }, { state: 'walk', then: act => { act.state = 'demo'; act.presenting = true; act.el.classList.add('is-presenting'); say(act, 'demo!', 1800); act.until = now() + dur(rand(1000, 2000)) } })
+    } else {
+      const c = spots[i % spots.length]
+      walkTo(a, { x: c.x + 0.5, y: c.y + 0.5 }, { state: 'walk', then: act => { act.state = 'demo'; act.face = front.x + 0.5 < act.x ? -1 : 1; place(act); if (Math.random() < 0.5) say(act, pick(CLAP), 1400); act.until = now() + dur(rand(1500, 3500)) } })
+    }
+  })
+  scrollToRoom(spot.id)
+  showToast(`Demo day in ${state.groups[spot.id].name}: ${state.people[presenter.id]?.name || 'someone'} presents`)
+  return 20000
 }
 
 function biggest(kind) {
