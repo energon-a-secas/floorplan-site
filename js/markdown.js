@@ -5,7 +5,7 @@
 //  rosterMarkdown()     the board as an outline in the same syntax, so an
 //                       export pastes back in unchanged
 //
-//  Safety model (same as agentlore-site and rigcheck-site): the source is
+//  Safety model (same as agentlore-site and cadrage-site): the source is
 //  HTML-escaped FIRST, then a fixed whitelist of patterns is promoted back
 //  to tags. The regexes only ever turn safe text into safe markup.
 // ════════════════════════════════════════════════════════════
