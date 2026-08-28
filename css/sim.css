@@ -122,3 +122,15 @@ body.embed .sim-bar { display: none !important; }
   .building-layer.is-dark::after, .building-layer.is-dark .room.is-alarm { animation: none; }
 }
 @media print { .sim-bar, .actor, .confetti { display: none !important; } }
+
+/* Small screens: the bar was seven wrapped rows on a phone. Drop the labels
+   and the hint, keep each group on one scrollable row. */
+@media (max-width: 640px) {
+  .sim-bar { gap: 6px var(--space-3); padding: 6px var(--space-3); }
+  .sb-key, .sb-status { display: none; }
+  .sim-bar input[type="range"] { width: 84px; }
+  .sb-clock { min-width: 0; }
+  .sb-group { flex-wrap: nowrap; overflow-x: auto; max-width: 100%; scrollbar-width: none; }
+  .sb-group::-webkit-scrollbar { display: none; }
+  .sb-chip { flex: 0 0 auto; }
+}
