@@ -1,0 +1,8 @@
+{
+  "name": "floorplan-site",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "convex": "^1.21.0"
+  }
+}

@@ -157,6 +157,17 @@ body.visiting .room-resize, body.visiting .room-grip { display: none; }
 .visitor-tag { position: absolute; top: -10px; font-size: 9px; color: #fff; background: var(--ink); padding: 0 4px; border: 1px solid rgba(255,255,255,.4); }
 .visitor.bump { animation: bump .2s steps(2); }
 @keyframes bump { 50% { transform: translateX(3px); } }
+
+/* remote visitors (presence.js): same placement as .visitor, visually a guest */
+.visitor--remote { z-index: 39; opacity: .82; transition: left .25s linear, top .25s linear; }
+.visitor--remote img { filter: drop-shadow(0 3px 0 rgba(0,0,0,.4)); }
+.visitor--remote .visitor-tag { background: #3b2f6b; border-color: rgba(255,255,255,.55); }
+.presence-pill {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  z-index: 490; padding: 4px 10px; font-size: 11px; color: #fff;
+  background: var(--surface-toast, #1a1730); border: 1px solid rgba(255,255,255,.35);
+  border-radius: 999px; pointer-events: none;
+}
 .visit-card {
   position: absolute; left: calc(var(--x) * var(--cell)); top: calc(var(--y) * var(--cell)); z-index: 50;
   width: 250px; padding: 10px; background: var(--ink); border: 3px solid #e2e8f0; box-shadow: 4px 4px 0 rgba(0,0,0,.6);
@@ -173,4 +184,5 @@ body.visiting .seat { cursor: default; }
 @media (prefers-reduced-motion: reduce) {
   .visitor { transition: none; }
   .visitor.bump { animation: none; }
+  .visitor--remote { transition: none; }
 }

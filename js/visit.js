@@ -13,7 +13,7 @@ import { $, showToast, escHtml } from './utils.js'
 import { avatarDataUrl, myCharacter, spriteDataUrl } from './avatar.js'
 import { renderMarkdown } from './markdown.js'
 
-let pos = null, grid = null, el = null, card = null, nearSeat = null
+let pos = null, grid = null, el = null, card = null, nearSeat = null, presence = null
 const KEYS = { w: [0, -1], a: [-1, 0], s: [0, 1], d: [1, 0], ArrowUp: [0, -1], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowRight: [1, 0] }
 
 export function startVisit() {
@@ -29,6 +29,8 @@ export function startVisit() {
   mount()
   document.addEventListener('keydown', onKey, true)
   document.addEventListener('floorplan:board', onBoard)
+  // Presence is optional and a no-op until its CONVEX_URL is configured.
+  import('./presence.js').then(m => { presence = m; if (ui.visiting) m.startPresence(pos) }).catch(() => {})
   showToast('Visit mode: walk with WASD or the arrows, Esc to leave')
   return true
 }
@@ -38,6 +40,7 @@ export function stopVisit() {
   document.body.classList.remove('visiting')
   document.removeEventListener('keydown', onKey, true)
   document.removeEventListener('floorplan:board', onBoard)
+  presence?.stopPresence()
   el?.remove(); card?.remove(); el = card = null; nearSeat = null
 }
 
@@ -66,6 +69,7 @@ function update() {
   el.style.setProperty('--x', pos.x)
   el.style.setProperty('--y', pos.y)
   el.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  presence?.reportMove(pos.x, pos.y)
   lookAround()
 }
 
