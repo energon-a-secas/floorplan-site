@@ -19,7 +19,7 @@ import { createPresenceCore, isConfiguredUrl, mapKeyFor, guestName } from './pre
 
 // Set after provisioning (npx convex login, then npx convex dev --once here).
 // e.g. 'https://brave-otter-123.convex.cloud'. Empty string disables presence.
-const CONVEX_URL = ''
+const CONVEX_URL = 'https://adjoining-crane-592.convex.cloud'
 // Same pinned browser build memes-site loads; fetched only once presence starts.
 const CONVEX_ESM = 'https://esm.sh/convex@1.21.0/browser'
 
