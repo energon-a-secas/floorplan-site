@@ -29,7 +29,7 @@ function init() {
   bindEvents()
   if (!loadFromUrl()) {
     const restored = ui.embed ? false : loadSaved()   // an embed shows the URL's document or the example, never the visitor's own
-    if (!restored) loadExample('atlas')
+    if (!restored) loadExample('atlas', { firstRun: true })
   }
   const mode = q.get('mode')
   if (mode === 'diagram' || mode === 'building') setMode(mode)

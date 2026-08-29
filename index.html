@@ -103,6 +103,7 @@
         <button type="button" class="nav-link nav-link--badge" id="insightToggle" data-action="toggle-insights" aria-label="Toggle insights">
           Insights <span class="insight-badge" id="insightBadge" hidden>0</span>
         </button>
+        <button type="button" class="nav-link nav-link--help" id="helpBtn" data-action="help" aria-label="Help: the views, shares, FTE, and every key" title="Help (?)">?</button>
       </div>
       <a class="header-home" href="https://neorgon.com/" title="neorgon.com" aria-label="Neorgon home">
         <svg class="nh-hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -123,7 +124,7 @@
     <div class="workspace" id="workspace">
 
       <aside class="roster" id="roster" aria-label="People">
-        <div class="roster-head"><h2>People</h2><span class="roster-count" id="rosterCount"></span></div>
+        <div class="roster-head"><h2>People</h2><span class="roster-count" id="rosterCount" title="FTE adds everyone's shares: two people at 50% count as 1 full-time equivalent"></span></div>
         <div class="roster-list" id="rosterList" data-drop="roster" tabindex="0" aria-label="Roster: drop here to unassign"></div>
         <form class="roster-add" id="addPersonForm" autocomplete="off">
           <input type="text" id="personName" class="roster-input" placeholder="Add a person" maxlength="60" aria-label="Name">
@@ -191,9 +192,9 @@
               <label class="scale-field"><span>Zoom</span><input type="range" id="scaleRange" min="0.6" max="1.6" step="0.1" value="1" aria-label="Zoom"></label>
               <button type="button" class="btn btn--ghost btn--sm" id="fitBtn" data-action="fit" aria-pressed="false" title="Scale the building to the board width">Fit</button>
               <button type="button" class="btn btn--ghost btn--sm" data-action="relayout" title="Clear every room's saved position and let the packer place them">Auto layout</button>
-              <button type="button" class="btn btn--ghost btn--sm btn--visit" id="visitBtn" data-action="visit" aria-pressed="false" title="Walk the office with WASD or the arrows">Visit</button>
-              <button type="button" class="btn btn--ghost btn--sm btn--sim" id="simBtn" data-action="sim" aria-pressed="false" title="Bring the office to life: people work, chat, take breaks; stir it with a party, an earthquake or an outage">Sim</button>
             </span>
+            <button type="button" class="btn btn--ghost btn--sm btn--visit" id="visitBtn" data-action="visit" aria-pressed="false" title="Walk the office with WASD or the arrows (opens the Building view)">Visit</button>
+            <button type="button" class="btn btn--ghost btn--sm btn--sim" id="simBtn" data-action="sim" aria-pressed="false" title="Bring the office to life: people work, chat, take breaks; stir it with a party, an earthquake or an outage (opens the Building view)">Sim</button>
             <button type="button" class="btn btn--ghost btn--sm btn--clear" data-action="clear" title="Clear the board (undoable)">Clear</button>
           </div>
         </div>
@@ -292,14 +293,31 @@
   <dialog class="fp-dialog" id="helpDialog" aria-labelledby="helpTitle">
     <header class="modal__header"><h2 id="helpTitle">Floorplan in a minute</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close">×</button></header>
     <div class="modal__body help-body">
+      <h3>Getting around</h3>
+      <p><strong>People</strong> live in the left rail: add a name there and drag it onto the board. The <strong>board</strong> in the middle is the map itself; the buttons at the top left switch it between <strong>Diagram</strong> (plain nested boxes) and <strong>Building</strong> (the pixel office). <strong>YAML</strong> opens the same document as text on the right. <strong>Insights</strong> (top right) flags what a manager should notice, and the toolbar above the board holds groups, templates, undo, versions and display options.</p>
+      <p>Not fond of pixel art? Stay in Diagram and pick <em>Initials</em> under <strong>Display</strong>: plain boxes, no sprites anywhere.</p>
+      <h3>Groups and shared spaces</h3>
       <p><strong>Groups</strong> hold people. A group inside a group is a sub-group. A <strong>shared space</strong> (band) spans several groups: a QA pool, an on-call rotation, shared efforts.</p>
-      <p><strong>Percentages.</strong> Drop with <kbd>Alt</kbd> held to split a person between two groups. Every seat has a share bar: drag it (5% steps), or focus it and nudge with the arrows; click the <em>NN%</em> badge to type a value. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
-      <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner. <strong>Visit</strong> lets you walk it. <strong>Sim</strong> brings it to life: everyone walks in, works, fetches coffee in a shared space, chats, holds team syncs; a split person hops between desks. Click a character, then a colleague to make them talk or the floor to send them there. The clock dims people outside their 09:00 to 17:00 local: scrub it, jump to <em>Peak</em> (the fullest hour) or <em>Play day</em> to watch the office hand over from zone to zone; everyone takes lunch around noon local. Energy and company drift while people work and weight what they do next (hover a character to see them). Stir the floor with a party, a coffee break, an earthquake, an outage (the responders are the room that owns it plus every shared space that spans it), a fire drill, a visitor tour (a guest walks every room and the people there greet them) or a demo day (everyone gathers in the biggest room, one person presents). Drop someone from the roster onto a room while the sim runs and they walk from where they landed to a desk. Nothing from the sim lands in the document.</p>
+      <h3>Shares and FTE</h3>
+      <p>Drop with <kbd>Alt</kbd> held to split a person between two groups. Every seat has a share bar: drag it (5% steps), or focus it and nudge with the arrows; click the <em>NN%</em> badge to type a value. The roster bar shows each person's total; Insights flags anyone over or under 100%.</p>
+      <p><strong>FTE</strong> (full-time equivalent) adds the shares up: two people at 50% count as 1 FTE. The People header totals the whole roster; each group header counts its own people and FTE, sub-groups included.</p>
+      <h3>The two views</h3>
+      <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner.</p>
+      <h3>Visit and Sim</h3>
+      <p><strong>Visit</strong> lets you walk the office with WASD or the arrows. <strong>Sim</strong> brings it to life: everyone walks in, works, fetches coffee in a shared space, chats, holds team syncs; a split person hops between desks. Click a character, then a colleague to make them talk or the floor to send them there. Both open the Building view on their own.</p>
+      <p>The clock dims people outside their 09:00 to 17:00 local: scrub it, jump to <em>Peak</em> (the fullest hour) or <em>Play day</em> to watch the office hand over from zone to zone; everyone takes lunch around noon local. Energy and company drift while people work and weight what they do next (hover a character to see them).</p>
+      <p>Stir the floor with a party, a coffee break, an earthquake, an outage (the responders are the room that owns it plus every shared space that spans it), a fire drill, a visitor tour (a guest walks every room and the people there greet them) or a demo day (everyone gathers in the biggest room, one person presents). Drop someone from the roster onto a room while the sim runs and they walk from where they landed to a desk. Nothing from the sim lands in the document.</p>
+      <h3>Puzzle</h3>
       <p><strong>Puzzle</strong> scrambles the map and asks you to put everyone back in the fewest moves: the board marks who moved and the Changes tab lists it; Hint flashes one wrong seat; Give up restores the map. Undo is off while it runs. Best scores stay in this browser per document title. Turn Sim on first and the people walk as you fix it.</p>
-      <p><strong>Teams that work.</strong> Give people <em>tags</em> and groups <em>needs</em>; Insights flags a group missing a skill. Locations (or a <em>time zone</em>) feed a core-hours strip in the group sheet and an Insight when a team shares fewer than three hours. <strong>Templates</strong> start a squad, a pod, a platform team or a shared rotation in one click; <strong>CSV</strong> pastes straight in.</p>
-      <p><strong>Display.</strong> Per document: center seats in their box, show shares as bars, badges only or hide them, let a cat or a dog keep an open seat, pixel sprites or initials, order seats by name or share, hide locations. Each person's avatar has presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; everything lands in the YAML.</p>
-      <p><strong>Versions.</strong> Snapshot the document before a change (it is stored inside the YAML as <code>history:</code>, so it travels with links and exports). Scrub through snapshots, restore one, or <strong>compare now</strong> with a snapshot or a pasted document: the board marks who moved, joined, left, and whose share changed; the Changes tab lists it all.</p>
+      <h3>Teams that work</h3>
+      <p>Give people <em>tags</em> and groups <em>needs</em>; Insights flags a group missing a skill. Locations (or a <em>time zone</em>) feed a core-hours strip in the group sheet and an Insight when a team shares fewer than three hours. <strong>Templates</strong> start a squad, a pod, a platform team or a shared rotation in one click; <strong>CSV</strong> pastes straight in.</p>
+      <h3>Display</h3>
+      <p>Per document: center seats in their box, show shares as bars, badges only or hide them, let a cat or a dog keep an open seat, pixel sprites or initials, order seats by name or share, hide locations. Each person's avatar has presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; everything lands in the YAML.</p>
+      <h3>Versions</h3>
+      <p>Snapshot the document before a change (it is stored inside the YAML as <code>history:</code>, so it travels with links and exports). Scrub through snapshots, restore one, or <strong>compare now</strong> with a snapshot or a pasted document: the board marks who moved, joined, left, and whose share changed; the Changes tab lists it all.</p>
+      <h3>YAML</h3>
       <p><strong>YAML</strong> is the document. Edit it in the side panel and Apply (<kbd>Cmd/Ctrl+Enter</kbd>). Define <code>profiles:</code> once and <code>extends:</code> them from groups or people, gitlabform style. Share links carry the whole document.</p>
+      <h3>Keys</h3>
       <dl class="keys">
         <dt><kbd>Enter</kbd> / <kbd>Space</kbd></dt><dd>pick up the focused person; <kbd>Enter</kbd> on a group seats them (<kbd>Alt+Enter</kbd> splits)</dd>
         <dt>← → on a share bar</dt><dd>nudge the share by 5 (<kbd>Shift</kbd> for 10); <kbd>Home</kbd>/<kbd>End</kbd> jump</dd>

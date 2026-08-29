@@ -161,4 +161,4 @@ YAML (canonical), JSON, Markdown outline, Mermaid (`flowchart TB` with one `subg
 
 ## Keyboard
 
-Enter/Space picks up a focused person, Enter on a group seats them (Alt+Enter splits), Delete removes a seat, Esc drops or closes, Cmd/Ctrl+Z undoes 40 steps (redo with Shift), `?` opens help. In Building mode, Visit walks a pixel avatar with WASD or the arrows; walls block, doors let you through, and standing next to a desk shows that person's card.
+Enter/Space picks up a focused person, Enter on a group seats them (Alt+Enter splits), Delete removes a seat, Esc drops or closes, Cmd/Ctrl+Z undoes 40 steps (redo with Shift), `?` opens help (also the ? button in the header). Visit walks a pixel avatar with WASD or the arrows; walls block, doors let you through, and standing next to a desk shows that person's card.

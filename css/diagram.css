@@ -26,8 +26,9 @@
 .gbox--band > .g-head { justify-content: center; }
 .gbox--band > .g-head .g-more { margin-left: 0; }
 .gbox--band > .g-members { justify-content: center; }
+.gbox .g-head { flex-wrap: wrap; }   /* narrow boxes drop the stats under the name instead of crushing it */
 .gbox > .g-head .g-name { font-size: var(--text-base); white-space: normal; line-height: 1.2; }
-.gbox .g-head .g-name { flex: 1 1 auto; white-space: normal; }
+.gbox .g-head .g-name { flex: 1 1 auto; white-space: normal; min-width: 72px; }
 .gbox .g-head .g-stats { flex: 0 0 auto; }
 .gbox.depth-1 > .g-head .g-name, .gbox.depth-2 > .g-head .g-name { font-size: var(--text-sm); color: var(--text-secondary); }
 .gbox > .g-head::before { content: ''; width: 9px; height: 9px; border-radius: 2px; background: var(--g); flex-shrink: 0; }

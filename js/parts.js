@@ -81,7 +81,7 @@ export function groupHeadHtml(group, { tag = 'header', showStats = true, extra =
   const sel = ui.selection?.type === 'group' && ui.selection.id === group.id
   return `<${tag} class="g-head${sel ? ' is-selected' : ''}" data-group-head="${group.id}">
     <span class="g-name" data-svg="text">${escHtml(group.name)}</span>
-    ${showStats ? `<span class="g-stats" data-svg="text">${escHtml(statsLabel(group.id))}</span>` : ''}
+    ${showStats ? `<span class="g-stats" data-svg="text" title="People in this group and its sub-groups; FTE adds their shares: two at 50% count as 1">${escHtml(statsLabel(group.id))}</span>` : ''}
     ${group.notes ? `<span class="g-note-dot" title="Has notes" aria-label="Has notes" data-action="select-group" data-id="${group.id}"></span>` : ''}
     ${extra}
     <button type="button" class="g-more" data-action="select-group" data-id="${group.id}" aria-label="Group details: ${escHtml(group.name)}">···</button>

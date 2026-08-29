@@ -413,7 +413,7 @@ export function applyYaml() {
   return true
 }
 
-export function loadExample(id) {
+export function loadExample(id, { firstRun = false } = {}) {
   const ex = exampleById(id); if (!ex) return
   const { model, errors } = parseYaml(ex.yaml)
   if (!model || errors.length) { showToast('Example failed to load'); console.error(errors); return }
@@ -423,7 +423,7 @@ export function loadExample(id) {
   ui.yamlDirty = false
   markYamlInSync(ex.yaml)
   afterChange()
-  showToast(`Loaded ${ex.name}. Cmd/Ctrl+Z brings back what was there`)
+  showToast(firstRun ? 'This is the Atlas example, loaded to look around. The ? button up top explains everything' : `Loaded ${ex.name}. Cmd/Ctrl+Z brings back what was there`)
 }
 
 function runExport(kind) {
@@ -443,13 +443,23 @@ function runExport(kind) {
   }
 }
 
+// Visit and Sim live in the office: entering either from the diagram switches
+// the view first (undoable, like the header mode buttons; session-only when read-only).
+function ensureBuilding() {
+  if (state.meta.mode === 'building') return
+  if (ui.readonly) { setMode('building'); render() }
+  else { snapshot(); setMode('building'); afterChange() }
+}
+
 async function toggleVisit() {
+  if (!ui.visiting) ensureBuilding()
   const mod = await import('./visit.js')
   if (ui.visiting) mod.stopVisit(); else mod.startVisit()
   renderToolbar()
 }
 
 async function toggleSim() {
+  if (!ui.simulating) ensureBuilding()
   const mod = await import('./sim.js')
   mod.toggleSim()
 }
