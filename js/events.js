@@ -128,7 +128,7 @@ function onClick(e) {
   if (t.closest('.room--title')) { select('group', t.closest('.room--title').dataset.group); return }
 }
 
-const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'sim', 'help', 'dialog-close', 'fit', 'share', 'toggle-versions', 'preview-version', 'exit-preview', 'drawer-tab', 'compare-clear', 'compare-load', 'import-close', 'import-apply', 'import-file'])
+const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'sim', 'help', 'dialog-close', 'fit', 'share', 'toggle-versions', 'preview-version', 'exit-preview', 'drawer-tab', 'compare-clear', 'compare-load', 'import-close', 'import-apply', 'import-file', 'tour-next', 'tour-skip'])
 const PREVIEW_OK = new Set([...VIEW_ACTIONS, 'restore-version', 'delete-version', 'snapshot-now'])
 function runAction(action, el, e) {
   const id = el.dataset.id
@@ -170,6 +170,8 @@ function runAction(action, el, e) {
     }
     case 'fit': ui.fit = !ui.fit; renderToolbar(); renderBoard(); break
     case 'toggle-versions': ui.versionsOpen = !ui.versionsOpen; renderToolbar(); import('./render.js').then(m => m.renderVersions()); break
+    case 'tour-next': import('./tour.js').then(m => m.next()); break
+    case 'tour-skip': import('./tour.js').then(m => m.endTour()); break
     case 'preview-version': enterPreview(Number(el.dataset.idx)); break
     case 'exit-preview': exitPreview(); break
     case 'restore-version': restorePreview(); break
@@ -423,7 +425,11 @@ export function loadExample(id, { firstRun = false } = {}) {
   ui.yamlDirty = false
   markYamlInSync(ex.yaml)
   afterChange()
-  showToast(firstRun ? 'This is the Atlas example, loaded to look around. The ? button up top explains everything' : `Loaded ${ex.name}. Cmd/Ctrl+Z brings back what was there`)
+  if (firstRun) {
+    // The tour's first card carries the orientation; the toast is the fallback
+    // when it is gated (embed, readonly, ?sim=, or already seen).
+    import('./tour.js').then(m => { if (!m.startTour()) showToast('This is the Atlas example, loaded to look around. The ? button up top explains everything') })
+  } else showToast(`Loaded ${ex.name}. Cmd/Ctrl+Z brings back what was there`)
 }
 
 function runExport(kind) {

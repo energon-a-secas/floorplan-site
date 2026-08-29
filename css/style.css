@@ -601,7 +601,27 @@ button:active,
   --ws-h: calc(100dvh - 106px);    /* app header 56 + app footer 50 */
   --roster-w: 252px; --yaml-w: 440px;
   --z-sheet: 350;
+  --z-tour: 600;    /* above the toast (500); native dialogs still win via the top layer */
 }
+
+/* ── First-visit tour (tour.js): one spotlight element whose giant box-shadow
+   is the dimmer, plus a fixed card. pointer-events: none keeps the page
+   clickable; the card holds the only buttons. ── */
+.tour-spot {
+  position: fixed; z-index: var(--z-tour); pointer-events: none;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 200vmax rgba(2, 4, 12, .62);
+  transition: left .25s var(--ease-out), top .25s var(--ease-out), width .25s var(--ease-out), height .25s var(--ease-out);
+}
+.tour-card {
+  position: fixed; z-index: var(--z-tour); width: 300px; max-width: calc(100vw - 16px);
+  padding: 14px; background: var(--surface-1, #0d1426); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); box-shadow: var(--shadow-modal, 0 18px 50px rgba(0,0,0,.5));
+}
+.tour-card h3 { font-size: var(--text-sm); margin-bottom: 4px; }
+.tour-card p { font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.5; }
+.tour-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.tour-count { font-size: var(--text-xs); color: var(--text-muted); margin-right: auto; }
 .px-avatar { image-rendering: pixelated; image-rendering: crisp-edges; display: block; flex-shrink: 0; user-select: none; -webkit-user-drag: none; }
 .px-avatar--vacant { opacity: .6; }
 kbd { font-family: ui-monospace, Menlo, monospace; font-size: .85em; padding: 1px 5px; border: 1px solid var(--border-strong); border-bottom-width: 2px; border-radius: 4px; background: var(--surface-2); }
@@ -938,6 +958,7 @@ body.readonly .room-resize, body.readonly .room-grip, body.readonly .chip-remove
 }
 @media (prefers-reduced-motion: reduce) {
   .is-flash, .drag-ghost { animation: none !important; }
+  .tour-spot { transition: none; }
 }
 
 /* ── Versions strip, preview banner, compare ───────────────── */
@@ -1052,7 +1073,7 @@ body.display-locations-off .seat-loc { display: none !important; }
 
 /* ── Print: the board only, on paper ───────────────────────── */
 @media print {
-  .header-bar, .neo-footer, .roster, .board-toolbar, .side-panel, .detail-sheet, .insight-drawer, .drawer-scrim, .versions-bar, .preview-banner, .embed-link, .toast, .skip-link { display: none !important; }
+  .header-bar, .neo-footer, .roster, .board-toolbar, .side-panel, .detail-sheet, .insight-drawer, .drawer-scrim, .versions-bar, .preview-banner, .embed-link, .toast, .skip-link, .tour-spot, .tour-card { display: none !important; }
   body, main#main, .workspace { display: block !important; height: auto !important; min-height: 0 !important; background: #fff !important; color: #111 !important; }
   .board { overflow: visible !important; background: #fff !important; }
   .diagram, .building { min-width: 0 !important; }

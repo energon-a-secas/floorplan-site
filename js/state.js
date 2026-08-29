@@ -42,6 +42,7 @@ export const ui = {
   compare: null,      // null | { kind: 'version', index } | { kind: 'external', model, label }
   marks: null,        // diff overlay for the renderers (diff.js)
   drawerTab: 'insights',
+  touring: false,     // first-visit tour is running (tour.js); view-only, never saved
 }
 
 // ── Replace / clear ──────────────────────────────────────────
