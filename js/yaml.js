@@ -1,6 +1,7 @@
 // ════════════════════════════════════════════════════════════
-//  yaml.js: text <-> model. js-yaml 4.1.0 is loaded globally by a CDN
-//  <script> in index.html (pinned, with SRI). Parsed documents are cloned
+//  yaml.js: text <-> model. js-yaml 4.3.2 is loaded globally by a jsdelivr
+//  <script> in index.html (pinned, with SRI, allowed by exact path in the
+//  page's CSP). Parsed documents are cloned
 //  before normalizing because YAML aliases share object identity, and code
 //  that later mutates one alias silently mutates them all (slides-site hit
 //  this: every alias got the first slide's number).

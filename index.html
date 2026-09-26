@@ -2,6 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Strict CSP (GitHub Pages sends no headers, so it lives here and must stay first).
+       script-src: the header kit's before-paint theme guard by hash, js-yaml and the esm.sh Convex
+       client (Visit presence) by exact path, the two analytics hosts. Editing that inline script or
+       bumping a pinned version means editing this line too (smoke check 29 catches a stale hash).
+       connect-src carries https: only because ?src= fetches a document from any https host that
+       allows CORS (llms.txt); the hosts named before it are everything else the page talks to. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-na6phygP/tfoCIp4oBeQgGJJpQsZob/udrLum+20QTI=' https://cdn.jsdelivr.net/npm/js-yaml@4.3.2/dist/js-yaml.min.js https://esm.sh/convex@1.21.0/ https://esm.sh/jwt-decode@%5E3.1.2 https://esm.sh/jwt-decode@3.1.2/ https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdn.neorgon.org/v1.0.0/ https://fonts.googleapis.com/css2; img-src 'self' data: https://cdn.neorgon.org/v1.0.0/ https://neorgon.goatcounter.com/count; font-src https://fonts.gstatic.com/s/silkscreen/; connect-src 'self' https://adjoining-crane-592.convex.cloud/api/ https://neorgon.goatcounter.com/count https://cloudflareinsights.com https:; manifest-src 'self'; media-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
@@ -343,8 +350,9 @@
     Everything stays in your browser: the document lives in localStorage and in the links you choose to share.
   </footer>
 
-  <!-- CDN dep (must load before app.js). Pinned + SRI, same line as slides-site. -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js" integrity="sha384-+pxiN6T7yvpryuJmE1gM9PX7yQit15auDb+ZwwvJOd/4be2Cie5/IuVXgQb/S9du" crossorigin="anonymous"></script>
+  <!-- CDN dep (must load before app.js). Pinned + SRI; the CSP above allows exactly this path.
+       js-yaml 4.3.2 (the patched 4.x line) from jsdelivr: cdnjs carries no fixed 4.x build. -->
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.3.2/dist/js-yaml.min.js" integrity="sha384-uwLg6oO8ZhFG2SuQfgmkMtosjtrFYlkPspa/cXS+b3D8GLRTHMDl/mTwqImdlKQO" crossorigin="anonymous"></script>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>

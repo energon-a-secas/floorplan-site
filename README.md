@@ -108,7 +108,7 @@ Or manually:
 python3 -m http.server 8868
 ```
 
-The only dependency is js-yaml 4.1.0 from a CDN, pinned with SRI; everything else is plain ES modules.
+The only dependency is js-yaml 4.3.2 from jsdelivr, pinned with SRI; everything else is plain ES modules. The page carries a strict `<meta>` Content-Security-Policy (no inline script but one hashed theme guard, no `eval`, pinned CDN paths), so a new third-party script, stylesheet, font or image host needs an entry there.
 
 ---
 
