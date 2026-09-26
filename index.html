@@ -4,11 +4,14 @@
   <meta charset="UTF-8">
   <!-- Strict CSP (GitHub Pages sends no headers, so it lives here and must stay first).
        script-src: the header kit's before-paint theme guard by hash, js-yaml and the esm.sh Convex
-       client (Visit presence) by exact path, the two analytics hosts. Editing that inline script or
+       client (Visit presence) by exact path, and the two analytics scripts the header kit loads, by exact
+       path too (a host-level entry would run any file on those hosts). Editing that inline script or
        bumping a pinned version means editing this line too (smoke check 29 catches a stale hash).
        connect-src carries https: only because ?src= fetches a document from any https host that
-       allows CORS (llms.txt); the hosts named before it are everything else the page talks to. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-na6phygP/tfoCIp4oBeQgGJJpQsZob/udrLum+20QTI=' https://cdn.jsdelivr.net/npm/js-yaml@4.3.2/dist/js-yaml.min.js https://esm.sh/convex@1.21.0/ https://esm.sh/jwt-decode@%5E3.1.2 https://esm.sh/jwt-decode@3.1.2/ https://gc.zgo.at https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://cdn.neorgon.org/v1.0.0/ https://fonts.googleapis.com/css2; img-src 'self' data: https://cdn.neorgon.org/v1.0.0/ https://neorgon.goatcounter.com/count; font-src https://fonts.gstatic.com/s/silkscreen/; connect-src 'self' https://adjoining-crane-592.convex.cloud/api/ https://neorgon.goatcounter.com/count https://cloudflareinsights.com https:; manifest-src 'self'; media-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+       allows CORS (llms.txt); the hosts named before it are everything else the page talks to.
+       https: also matches wss: on any host and reaches clerk.neorgon.com; an allowlist for ?src=
+       is what would let it go (CLAUDE.md, Gotchas). -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-na6phygP/tfoCIp4oBeQgGJJpQsZob/udrLum+20QTI=' https://cdn.jsdelivr.net/npm/js-yaml@4.3.2/dist/js-yaml.min.js https://esm.sh/convex@1.21.0/ https://esm.sh/jwt-decode@%5E3.1.2 https://esm.sh/jwt-decode@3.1.2/ https://gc.zgo.at/count.js https://static.cloudflareinsights.com/beacon.min.js; style-src 'self' 'unsafe-inline' https://cdn.neorgon.org/v1.0.0/ https://fonts.googleapis.com/css2; img-src 'self' data: https://cdn.neorgon.org/v1.0.0/ https://neorgon.goatcounter.com/count; font-src https://fonts.gstatic.com/s/silkscreen/; connect-src 'self' https://adjoining-crane-592.convex.cloud/api/ https://neorgon.goatcounter.com/count https://cloudflareinsights.com https:; manifest-src 'self'; media-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
