@@ -112,6 +112,23 @@ export function copyShareLink() {
 }
 const kb = n => (n / 1024).toFixed(1) + ' KB'
 
+/**
+ * The ?src= value as an absolute URL, or null. Parsed rather than prefix-matched
+ * (a prefix test let `http://localhost:@other.host/` through). Only https is
+ * fetched; plain http is allowed for a localhost file, and only while the page
+ * itself is served from localhost, so the live site never loads over http.
+ */
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+export function srcUrl(raw) {
+  if (!raw) return null
+  let u
+  try { u = new URL(raw) } catch { return null }
+  if (u.username || u.password) return null
+  if (u.protocol === 'https:') return u.href
+  if (u.protocol === 'http:' && LOCAL_HOSTS.includes(u.hostname) && LOCAL_HOSTS.includes(location.hostname)) return u.href
+  return null
+}
+
 /** Load a document the URL carries. Returns true when the URL claimed the load. */
 export function loadFromUrl() {
   const hash = location.hash.match(/^#d=(.+)$/)
@@ -123,8 +140,8 @@ export function loadFromUrl() {
     } catch { showToast('The link did not contain a valid document') }
     return true
   }
-  const src = new URLSearchParams(location.search).get('src')
-  if (src && (/^https:\/\//.test(src) || /^http:\/\/localhost[:/]/.test(src))) {
+  const src = srcUrl(new URLSearchParams(location.search).get('src'))
+  if (src) {
     fetch(src)
       .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text() })
       .then(text => { applyText(text); history.replaceState(null, '', location.pathname); showToast('Document loaded from URL') })
