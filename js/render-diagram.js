@@ -8,6 +8,7 @@
 import { state, topGroups, bands, childrenOf } from './state.js'
 import { seatHtml, vacantSeatsHtml, ghostSeatsHtml, groupHeadHtml, ownsHtml, emptyHintHtml, capacityInfo, sortedMembers } from './parts.js'
 import { ui } from './state.js'
+import { escHtml, safeColor } from './utils.js'
 
 export function renderDiagram() {
   const tops = topGroups()
@@ -41,7 +42,7 @@ function groupBox(g, depth) {
   const members = sortedMembers(g).map(m => seatHtml(g, m)).join('') + ghostSeatsHtml(g) + vacantSeatsHtml(g, vacant)
   const isEmpty = !g.members.length && !kids.length && !vacant && !members
   const gmark = ui.marks?.groups.get(g.id)
-  return `<section class="gbox gbox--${g.kind} depth-${Math.min(depth, 3)}${gmark ? ' diff-' + gmark : ''}" data-drop="group" data-group="${g.id}" style="--g:${g.color}" data-svg="box" tabindex="0" aria-label="${g.kind === 'band' ? 'Shared space' : 'Group'} ${g.name}">
+  return `<section class="gbox gbox--${escHtml(g.kind)} depth-${Math.min(depth, 3)}${gmark ? ' diff-' + escHtml(gmark) : ''}" data-drop="group" data-group="${escHtml(g.id)}" style="--g:${safeColor(g.color)}" data-svg="box" tabindex="0" aria-label="${g.kind === 'band' ? 'Shared space' : 'Group'} ${escHtml(g.name)}">
     ${groupHeadHtml(g)}
     ${members ? `<div class="g-members">${members}</div>` : ''}
     ${isEmpty ? emptyHintHtml(g.kind === 'band' ? 'Shared space: drop people here' : 'Drop people here') : ''}

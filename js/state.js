@@ -12,7 +12,7 @@
 // ════════════════════════════════════════════════════════════
 
 import { emptyModel, normalizeDoc, modelToDoc, MODES, DISPLAY_OPTIONS, readAvatar, tagList } from './schema.js'
-import { debounce, slug, colorAt } from './utils.js'
+import { debounce, slug, colorAt, isHex } from './utils.js'
 
 export const STORAGE_KEY = 'floorplan-v1'
 
@@ -96,7 +96,8 @@ export function addPerson({ name, location = '', role = '' }) {
 }
 export function updatePerson(id, patch) {
   const p = state.people[id]; if (!p) return
-  for (const k of ['name', 'location', 'role', 'color', 'notes', 'tz']) if (k in patch) p[k] = String(patch[k] ?? '')
+  for (const k of ['name', 'location', 'role', 'notes', 'tz']) if (k in patch) p[k] = String(patch[k] ?? '')
+  if ('color' in patch) p.color = isHex(patch.color) ? String(patch.color) : ''   // same rule as normalizeDoc: a colour is #rgb or #rrggbb, or nothing
   if ('avatar' in patch) p.avatar = readAvatar(patch.avatar)
   if ('tags' in patch) p.tags = tagList(patch.tags)
 }
@@ -126,7 +127,8 @@ export function addGroup({ name, parent = null, kind = 'group', spans = [] }) {
 }
 export function updateGroup(id, patch) {
   const g = state.groups[id]; if (!g) return
-  for (const k of ['name', 'color', 'notes']) if (k in patch) g[k] = String(patch[k] ?? '')
+  for (const k of ['name', 'notes']) if (k in patch) g[k] = String(patch[k] ?? '')
+  if ('color' in patch && isHex(patch.color)) g.color = String(patch.color)   // a group always keeps a valid colour (normalizeDoc gives every group one)
   if ('capacity' in patch) { const n = Number(patch.capacity); g.capacity = Number.isFinite(n) && n >= 0 ? Math.round(n) : null }
   if ('owns' in patch) g.owns = Array.isArray(patch.owns) ? patch.owns.map(String).filter(Boolean) : []
   if ('needs' in patch) g.needs = tagList(patch.needs)

@@ -135,7 +135,7 @@ function renderBar() {
   const status = $('puzzleStatus'); if (!status || !puzzle.on) return
   const left = leftToFix()
   const best = readBest()[state.meta.title || 'untitled']
-  status.innerHTML = `<strong>${left}</strong> ${left === 1 ? 'seat' : 'seats'} to fix · <strong>${puzzle.moves}</strong> ${puzzle.moves === 1 ? 'move' : 'moves'}${puzzle.hints ? ` · ${puzzle.hints} hint${puzzle.hints === 1 ? '' : 's'}` : ''}${best ? ` · best ${best.moves}` : ''}. The marks on the board and the Changes tab say who moved. <span class="sb-dim">Undo is off: move people back instead.</span>`
+  status.innerHTML = `<strong>${left}</strong> ${left === 1 ? 'seat' : 'seats'} to fix · <strong>${puzzle.moves}</strong> ${puzzle.moves === 1 ? 'move' : 'moves'}${puzzle.hints ? ` · ${puzzle.hints} hint${puzzle.hints === 1 ? '' : 's'}` : ''}${Number.isFinite(best?.moves) ? ` · best ${best.moves}` : ''}. The marks on the board and the Changes tab say who moved. <span class="sb-dim">Undo is off: move people back instead.</span>`
 }
 
 function readBest() { try { return JSON.parse(localStorage.getItem(BEST_KEY) || '{}') || {} } catch { return {} } }

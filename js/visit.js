@@ -9,7 +9,7 @@
 import { state, ui, membershipsOf } from './state.js'
 import { getLayout } from './render.js'
 import { passableGrid } from './layout.js'
-import { $, showToast, escHtml } from './utils.js'
+import { $, showToast, escHtml, safeColor } from './utils.js'
 import { avatarDataUrl, myCharacter, spriteDataUrl } from './avatar.js'
 import { renderMarkdown } from './markdown.js'
 
@@ -108,7 +108,7 @@ function showCard(seat, cx, cy, layer) {
   card?.remove()
   card = document.createElement('div')
   card.className = 'visit-card'
-  const shares = membershipsOf(p.id).map(m => `<span class="visit-share" style="--g:${m.group.color}">${escHtml(m.group.name)} ${m.pct}%</span>`).join('')
+  const shares = membershipsOf(p.id).map(m => `<span class="visit-share" style="--g:${safeColor(m.group.color)}">${escHtml(m.group.name)} ${escHtml(m.pct)}%</span>`).join('')
   card.innerHTML = `<div class="visit-card-head"><img src="${avatarDataUrl(p.name, seat.style.getPropertyValue('--seat-color') || '#64748b')}" width="48" height="48" alt=""><div><strong>${escHtml(p.name)}</strong>${p.role ? `<div class="visit-role">${escHtml(p.role)}</div>` : ''}${p.location ? `<div class="visit-loc">${escHtml(p.location)}</div>` : ''}</div></div>
     <div class="visit-shares">${shares}</div>
     ${p.notes.trim() ? `<div class="md-preview">${renderMarkdown(p.notes)}</div>` : ''}`

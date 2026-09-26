@@ -10,7 +10,7 @@
 
 import { state, ui, childrenOf } from './state.js'
 import { computeLayout } from './layout.js'
-import { escHtml } from './utils.js'
+import { escHtml, safeColor } from './utils.js'
 import { seatHtml, vacantSeatsHtml, ghostSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml, sortedMembers } from './parts.js'
 import { totals } from './parts.js'
 
@@ -44,7 +44,7 @@ export function renderBuilding() {
   }
 
   // doors and entrances
-  for (const d of doors) parts.push(`<div class="door door--${d.orient}" style="--x:${d.x};--y:${d.y}" title="${escHtml(d.label || 'door')}" data-svg="door"></div>`)
+  for (const d of doors) parts.push(`<div class="door door--${escHtml(d.orient)}" style="--x:${d.x};--y:${d.y}" title="${escHtml(d.label || 'door')}" data-svg="door"></div>`)
   for (const e of entrances) parts.push(`<div class="door door--h door--entrance" style="--x:${e.x};--y:${e.y}" data-svg="door"></div>`)
 
   // straddle seats
@@ -56,9 +56,10 @@ export function renderBuilding() {
 
 function roomHtml(g, r, straddled) {
   if (!g) return ''
-  const vars = `--x:${r.x};--y:${r.y};--w:${r.w};--h:${r.h};--g:${g.color}`
+  const vars = `--x:${Number(r.x) || 0};--y:${Number(r.y) || 0};--w:${Number(r.w) || 0};--h:${Number(r.h) || 0};--g:${safeColor(g.color)}`
+  const gid = escHtml(g.id)
   if (r.kind === 'title') {
-    return `<div class="room room--title" data-drop="group" data-group="${g.id}" style="${vars}" data-svg="box" tabindex="0" aria-label="Group ${escHtml(g.name)}"><span class="room-title-text" data-svg="text">${escHtml(g.name)}</span><button type="button" class="g-more g-more--title" data-action="select-group" data-id="${g.id}" aria-label="Group details: ${escHtml(g.name)}">···</button></div>`
+    return `<div class="room room--title" data-drop="group" data-group="${gid}" style="${vars}" data-svg="box" tabindex="0" aria-label="Group ${escHtml(g.name)}"><span class="room-title-text" data-svg="text">${escHtml(g.name)}</span><button type="button" class="g-more g-more--title" data-action="select-group" data-id="${gid}" aria-label="Group details: ${escHtml(g.name)}">···</button></div>`
   }
   const kids = childrenOf(g.id)
   const { vacant } = capacityInfo(g)
@@ -68,15 +69,15 @@ function roomHtml(g, r, straddled) {
   const isRoom = r.kind === 'room' || r.kind === 'band'
   const narrow = r.w < 2.5
   const gmark = ui.marks?.groups.get(g.id)
-  const classes = ['room', `room--${r.kind}`, `depth-${Math.min(r.depth, 3)}`, g.kind === 'band' ? 'room--shared' : '', kids.length ? 'has-subs' : '', narrow ? 'room--narrow' : '', g.owns.length && r.kind === 'room' ? 'has-plaque' : '', gmark ? 'diff-' + gmark : ''].filter(Boolean).join(' ')
-  const head = groupHeadHtml(g, { showStats: !narrow && r.w >= 6, extra: isRoom ? `<span class="room-grip" data-room-handle="move" data-group="${g.id}" title="Drag to move the room" aria-hidden="true"></span>` : '' })
+  const classes = escHtml(['room', `room--${r.kind}`, `depth-${Math.min(r.depth, 3)}`, g.kind === 'band' ? 'room--shared' : '', kids.length ? 'has-subs' : '', narrow ? 'room--narrow' : '', g.owns.length && r.kind === 'room' ? 'has-plaque' : '', gmark ? 'diff-' + gmark : ''].filter(Boolean).join(' '))
+  const head = groupHeadHtml(g, { showStats: !narrow && r.w >= 6, extra: isRoom ? `<span class="room-grip" data-room-handle="move" data-group="${gid}" title="Drag to move the room" aria-hidden="true"></span>` : '' })
   const empty = !ownSeats && !kids.length
-  return `<section class="${classes}" data-drop="group" data-group="${g.id}" style="${vars};z-index:${1 + r.depth}" data-svg="box" tabindex="0" aria-label="${g.kind === 'band' ? 'Shared space' : 'Room'} ${escHtml(g.name)}">
+  return `<section class="${classes}" data-drop="group" data-group="${gid}" style="${vars};z-index:${1 + (Number(r.depth) || 0)}" data-svg="box" tabindex="0" aria-label="${g.kind === 'band' ? 'Shared space' : 'Room'} ${escHtml(g.name)}">
     ${head}
     ${ownSeats ? `<div class="room-members${kids.length ? ' room-members--strip' : ''}">${ownSeats}</div>` : ''}
     ${empty ? `<div class="g-empty">${g.kind === 'band' ? 'Shared space' : 'Empty room'}</div>` : ''}
     ${g.owns.length && r.kind === 'room' ? `<div class="room-plaque" data-svg="owns">${g.owns.map(o => `<span class="own-tag" data-svg="tag">${escHtml(o)}</span>`).join('')}</div>` : ''}
-    ${isRoom ? `<span class="room-resize" data-room-handle="resize" data-group="${g.id}" title="Drag to resize" aria-hidden="true"></span>` : ''}
+    ${isRoom ? `<span class="room-resize" data-room-handle="resize" data-group="${gid}" title="Drag to resize" aria-hidden="true"></span>` : ''}
   </section>`
 }
 
@@ -88,11 +89,12 @@ function straddleHtml(s) {
   const sel = ui.selection?.type === 'person' && ui.selection.id === p.id
   const picked = ui.picked?.person === p.id
   const label = `${p.name}, ${ma.pct}% in ${ga.name} and ${mb.pct}% in ${gb.name}. Enter to pick up.`
+  const pid = escHtml(p.id), aid = escHtml(ga.id), bid = escHtml(gb.id)
   return `<div class="straddle" style="--x:${s.x};--y:${s.y}">
-    <div class="seat seat--compact seat--straddle${sel ? ' is-selected' : ''}${picked ? ' is-picked' : ''}" data-seat="${ga.id}:${p.id}" data-drag="person" data-person="${p.id}" data-from="${ga.id}" data-straddle="${gb.id}" data-band="${t.total > 100 ? 'over' : t.total < 100 ? 'under' : 'ok'}" tabindex="0" role="button" aria-label="${escHtml(label)}" style="--seat-color:${ga.color};--seat-color-b:${gb.color}" data-svg="box">
+    <div class="seat seat--compact seat--straddle${sel ? ' is-selected' : ''}${picked ? ' is-picked' : ''}" data-seat="${aid}:${pid}" data-drag="person" data-person="${pid}" data-from="${aid}" data-straddle="${bid}" data-band="${t.total > 100 ? 'over' : t.total < 100 ? 'under' : 'ok'}" tabindex="0" role="button" aria-label="${escHtml(label)}" style="--seat-color:${safeColor(ga.color)};--seat-color-b:${safeColor(gb.color)}" data-svg="box">
       ${faceHtml(p, ga.color)}
       <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(p.name)}</span></span>
-      <span class="pct-pair"><button type="button" class="pct-badge" data-pct="${ga.id}:${p.id}" title="Share in ${escHtml(ga.name)}" data-svg="badge">${ma.pct}%</button><button type="button" class="pct-badge" data-pct="${gb.id}:${p.id}" title="Share in ${escHtml(gb.name)}" data-svg="badge">${mb.pct}%</button></span>
+      <span class="pct-pair"><button type="button" class="pct-badge" data-pct="${aid}:${pid}" title="Share in ${escHtml(ga.name)}" data-svg="badge">${escHtml(ma.pct)}%</button><button type="button" class="pct-badge" data-pct="${bid}:${pid}" title="Share in ${escHtml(gb.name)}" data-svg="badge">${escHtml(mb.pct)}%</button></span>
       <span class="pct-bars">${pctBarHtml(ga, p, ma.pct, t.total > 100 ? 'over' : 'ok', 'pct-bar--a')}${pctBarHtml(gb, p, mb.pct, t.total > 100 ? 'over' : 'ok', 'pct-bar--b')}</span>
     </div>
   </div>`

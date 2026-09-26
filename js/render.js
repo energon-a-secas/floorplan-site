@@ -5,7 +5,7 @@
 // ════════════════════════════════════════════════════════
 
 import { state, ui, allGroups, topGroups, childrenOf, descendantsOf, membershipsOf, canUndo, canRedo, debouncedSave } from './state.js'
-import { $, escHtml, fmtFte, plural, showToast } from './utils.js'
+import { $, escHtml, safeColor, fmtFte, plural, showToast } from './utils.js'
 import { computeInsights, bandOf } from './allocation.js'
 import { renderMarkdown } from './markdown.js'
 import { emitYaml } from './yaml.js'
@@ -112,14 +112,14 @@ export function renderRoster() {
     const picked = ui.picked?.person === p.id && !ui.picked?.from
     const sel = ui.selection?.type === 'person' && ui.selection.id === p.id
     const where = tt.parts.map(x => `${x.group.name} ${x.pct}%`).join(', ') || 'not on a team'
-    return `<div class="chip${picked ? ' is-picked' : ''}${sel ? ' is-selected' : ''}" data-drag="person" data-person="${p.id}" data-band="${band}" tabindex="0" role="button" aria-label="${escHtml(p.name)}, ${tt.total}% allocated: ${escHtml(where)}. Enter to pick up, then Enter on a group to seat.">
+    return `<div class="chip${picked ? ' is-picked' : ''}${sel ? ' is-selected' : ''}" data-drag="person" data-person="${escHtml(p.id)}" data-band="${escHtml(band)}" tabindex="0" role="button" aria-label="${escHtml(p.name)}, ${escHtml(tt.total)}% allocated: ${escHtml(where)}. Enter to pick up, then Enter on a group to seat.">
       ${faceHtml(p, p.color || '#475569', { px: 32 })}
       <span class="chip-meta">
         <span class="chip-name">${escHtml(p.name)}</span>
-        <span class="chip-sub">${p.location ? escHtml(p.location) + ' · ' : ''}<span class="chip-pct" data-band="${band}">${tt.count ? tt.total + '%' : 'unassigned'}</span></span>
-        <span class="chip-bar" aria-hidden="true"><i style="width:${Math.min(100, tt.total)}%" data-band="${band}"></i></span>
+        <span class="chip-sub">${p.location ? escHtml(p.location) + ' · ' : ''}<span class="chip-pct" data-band="${escHtml(band)}">${tt.count ? escHtml(tt.total) + '%' : 'unassigned'}</span></span>
+        <span class="chip-bar" aria-hidden="true"><i style="width:${Math.min(100, Number(tt.total) || 0)}%" data-band="${escHtml(band)}"></i></span>
       </span>
-      <button type="button" class="chip-remove" data-action="remove-person" data-id="${p.id}" aria-label="Remove ${escHtml(p.name)}">×</button>
+      <button type="button" class="chip-remove" data-action="remove-person" data-id="${escHtml(p.id)}" aria-label="Remove ${escHtml(p.name)}">×</button>
     </div>`
   }).join('')
 }
@@ -202,7 +202,7 @@ export function renderInsights() {
     list.innerHTML = '<div class="insight insight--ok"><span class="insight-dot"></span><div><div class="insight-title">Nothing to flag</div><div class="insight-detail">Everyone sums to 100%, no empty groups, no rooms over capacity.</div></div></div>'
     return
   }
-  list.innerHTML = `<ul class="insight-items">${items.map(i => `<li class="insight insight--${i.severity}"${i.ref ? ` data-action="focus-ref" data-type="${i.ref.type}" data-id="${i.ref.id}" tabindex="0"` : ''}>
+  list.innerHTML = `<ul class="insight-items">${items.map(i => `<li class="insight insight--${escHtml(i.severity)}"${i.ref ? ` data-action="focus-ref" data-type="${escHtml(i.ref.type)}" data-id="${escHtml(i.ref.id)}" tabindex="0"` : ''}>
     <span class="insight-dot"></span>
     <div><div class="insight-title">${escHtml(i.title)}</div><div class="insight-detail">${escHtml(i.detail)}</div></div>
   </li>`).join('')}</ul>`
@@ -229,11 +229,11 @@ const field = (label, name, value, { type = 'text', placeholder = '' } = {}) =>
 function personDetail(p) {
   const t = totals().get(p.id)
   const shares = t.parts.map(x => `<li><span class="share-name">${escHtml(x.group.name)}</span>
-      <input type="number" min="1" max="100" step="5" value="${x.pct}" data-share="${x.group.id}:${p.id}" aria-label="Share in ${escHtml(x.group.name)}"><span class="share-pct">%</span>
-      <button type="button" class="btn btn--ghost btn--sm" data-action="unassign" data-group="${x.group.id}" data-person="${p.id}">Remove</button></li>`).join('')
+      <input type="number" min="1" max="100" step="5" value="${escHtml(x.pct)}" data-share="${escHtml(`${x.group.id}:${p.id}`)}" aria-label="Share in ${escHtml(x.group.name)}"><span class="share-pct">%</span>
+      <button type="button" class="btn btn--ghost btn--sm" data-action="unassign" data-group="${escHtml(x.group.id)}" data-person="${escHtml(p.id)}">Remove</button></li>`).join('')
   return `<header class="sheet-head"><h2>${escHtml(p.name)}</h2><button type="button" class="btn btn--ghost btn--icon" data-action="close-detail" aria-label="Close">×</button></header>
   <div class="sheet-body">
-    <div class="sheet-face">${faceHtml(p, t.parts[0]?.group.color || p.color || '#475569', { px: 48 })}<span class="sheet-total" data-band="${bandOf(t)}">${t.count ? t.total + '% allocated' : 'Unassigned'}</span></div>
+    <div class="sheet-face">${faceHtml(p, t.parts[0]?.group.color || p.color || '#475569', { px: 48 })}<span class="sheet-total" data-band="${escHtml(bandOf(t))}">${t.count ? escHtml(t.total) + '% allocated' : 'Unassigned'}</span></div>
     ${field('Name', 'person.name', p.name)}
     ${field('Location', 'person.location', p.location, { placeholder: 'City or country' })}
     ${field('Role', 'person.role', p.role, { placeholder: 'Developer, QA, Product...' })}
@@ -247,8 +247,8 @@ function personDetail(p) {
     ${p.notes.trim() ? `<div class="md-preview">${renderMarkdown(p.notes)}</div>` : ''}
     <h3 class="sheet-sub">Shares</h3>
     ${shares ? `<ul class="share-list">${shares}</ul>` : '<p class="sheet-hint">Not on any team. Drag the chip onto a group.</p>'}
-    ${t.count > 1 ? `<button type="button" class="btn btn--secondary btn--sm" data-action="balance" data-id="${p.id}">Balance shares to 100%</button>` : ''}
-    <div class="sheet-actions"><button type="button" class="btn btn--danger btn--sm" data-action="remove-person" data-id="${p.id}">Delete person</button></div>
+    ${t.count > 1 ? `<button type="button" class="btn btn--secondary btn--sm" data-action="balance" data-id="${escHtml(p.id)}">Balance shares to 100%</button>` : ''}
+    <div class="sheet-actions"><button type="button" class="btn btn--danger btn--sm" data-action="remove-person" data-id="${escHtml(p.id)}">Delete person</button></div>
   </div>`
 }
 
@@ -256,18 +256,18 @@ function groupDetail(g) {
   const own = g.members.map(m => {
     const p = state.people[m.person]; if (!p) return ''
     return `<li><span class="share-name">${escHtml(p.name)}</span>
-      <input type="number" min="1" max="100" step="5" value="${m.pct}" data-share="${g.id}:${p.id}" aria-label="Share of ${escHtml(p.name)}"><span class="share-pct">%</span>
-      <button type="button" class="btn btn--ghost btn--sm" data-action="unassign" data-group="${g.id}" data-person="${p.id}">Remove</button></li>`
+      <input type="number" min="1" max="100" step="5" value="${escHtml(m.pct)}" data-share="${escHtml(`${g.id}:${p.id}`)}" aria-label="Share of ${escHtml(p.name)}"><span class="share-pct">%</span>
+      <button type="button" class="btn btn--ghost btn--sm" data-action="unassign" data-group="${escHtml(g.id)}" data-person="${escHtml(p.id)}">Remove</button></li>`
   }).join('')
   const rooms = allGroups().filter(x => x.kind === 'group')
-  const spanOpts = g.kind === 'band' ? `<fieldset class="sheet-field"><legend>Spans</legend><div class="span-grid">${rooms.map(r => `<label><input type="checkbox" data-span="${r.id}" ${g.spans.includes(r.id) ? 'checked' : ''}> ${escHtml(r.name)}</label>`).join('')}</div></fieldset>` : ''
+  const spanOpts = g.kind === 'band' ? `<fieldset class="sheet-field"><legend>Spans</legend><div class="span-grid">${rooms.map(r => `<label><input type="checkbox" data-span="${escHtml(r.id)}" ${g.spans.includes(r.id) ? 'checked' : ''}> ${escHtml(r.name)}</label>`).join('')}</div></fieldset>` : ''
   const kindLabel = g.kind === 'band' ? 'Shared space' : (g.parent ? 'Sub-group' : 'Group')
   return `<header class="sheet-head"><h2>${escHtml(g.name)}</h2><button type="button" class="btn btn--ghost btn--icon" data-action="close-detail" aria-label="Close">×</button></header>
   <div class="sheet-body">
     <p class="sheet-hint">${kindLabel}${g.parent ? ` in ${escHtml(state.groups[g.parent]?.name || '')}` : ''}${g.extends.length ? ` · extends ${g.extends.map(escHtml).join(', ')}` : ''}</p>
     ${field('Name', 'group.name', g.name)}
     <div class="sheet-row">
-      <label class="sheet-field sheet-field--color"><span>Colour</span><input type="color" data-field="group.color" value="${escHtml(g.color || '#64748b')}"></label>
+      <label class="sheet-field sheet-field--color"><span>Colour</span><input type="color" data-field="group.color" value="${safeColor(g.color)}"></label>
       ${field('Capacity', 'group.capacity', g.capacity ?? '', { type: 'number', placeholder: 'seats' })}
     </div>
     ${field('Owns (comma separated)', 'group.owns', g.owns.join(', '), { placeholder: 'Checkout, Payments' })}
@@ -280,11 +280,11 @@ function groupDetail(g) {
     <h3 class="sheet-sub">Members</h3>
     ${own ? `<ul class="share-list">${own}</ul>` : '<p class="sheet-hint">No direct members. Drop people onto this group.</p>'}
     <div class="sheet-actions">
-      ${g.kind === 'group' ? `<button type="button" class="btn btn--secondary btn--sm" data-action="add-subgroup" data-id="${g.id}">+ Sub-group</button>` : ''}
-      <button type="button" class="btn btn--ghost btn--sm" data-action="move-group" data-id="${g.id}" data-dir="-1" aria-label="Move earlier">◀</button>
-      <button type="button" class="btn btn--ghost btn--sm" data-action="move-group" data-id="${g.id}" data-dir="1" aria-label="Move later">▶</button>
-      ${g.layout ? `<button type="button" class="btn btn--ghost btn--sm" data-action="clear-layout" data-id="${g.id}" title="Let the packer place this room">Auto place</button>` : ''}
-      <button type="button" class="btn btn--danger btn--sm" data-action="remove-group" data-id="${g.id}">Delete</button>
+      ${g.kind === 'group' ? `<button type="button" class="btn btn--secondary btn--sm" data-action="add-subgroup" data-id="${escHtml(g.id)}">+ Sub-group</button>` : ''}
+      <button type="button" class="btn btn--ghost btn--sm" data-action="move-group" data-id="${escHtml(g.id)}" data-dir="-1" aria-label="Move earlier">◀</button>
+      <button type="button" class="btn btn--ghost btn--sm" data-action="move-group" data-id="${escHtml(g.id)}" data-dir="1" aria-label="Move later">▶</button>
+      ${g.layout ? `<button type="button" class="btn btn--ghost btn--sm" data-action="clear-layout" data-id="${escHtml(g.id)}" title="Let the packer place this room">Auto place</button>` : ''}
+      <button type="button" class="btn btn--danger btn--sm" data-action="remove-group" data-id="${escHtml(g.id)}">Delete</button>
     </div>
   </div>`
 }
@@ -353,13 +353,13 @@ export function renderChanges() {
   const bm = baseModel()
   const gname = id => state.groups[id]?.name || bm?.groups[id]?.name || id
   const pname = id => state.people[id]?.name || bm?.people[id]?.name || id
-  const item = (sev, title, detail, ref) => `<li class="insight insight--${sev}"${ref ? ` data-action="focus-ref" data-type="${ref.type}" data-id="${ref.id}" tabindex="0"` : ''}><span class="insight-dot"></span><div><div class="insight-title">${title}</div>${detail ? `<div class="insight-detail">${detail}</div>` : ''}</div></li>`
+  const item = (sev, title, detail, ref) => `<li class="insight insight--${escHtml(sev)}"${ref ? ` data-action="focus-ref" data-type="${escHtml(ref.type)}" data-id="${escHtml(ref.id)}" tabindex="0"` : ''}><span class="insight-dot"></span><div><div class="insight-title">${title}</div>${detail ? `<div class="insight-detail">${detail}</div>` : ''}</div></li>`
   const sec = (title, items) => items.length ? `<div class="drawer-subhead">${title} (${items.length})</div><ul class="insight-items">${items.join('')}</ul>` : ''
   const out = [`<p class="sheet-hint">Now vs <strong>${escHtml(baseLabel())}</strong>: ${escHtml(changeSummary())}</p>`]
-  out.push(sec('Moved', d.moves.map(m => item('medium', `${escHtml(pname(m.person))}: ${escHtml(gname(m.from))} → ${escHtml(gname(m.to))}`, m.fromPct !== m.pct ? `${m.fromPct}% → ${m.pct}%` : `${m.pct}%`, state.people[m.person] ? { type: 'person', id: m.person } : null))))
-  out.push(sec('Joined', d.memberships.filter(m => m.kind === 'joined' && !m.moved).map(m => item('low', `${escHtml(pname(m.person))} joined ${escHtml(gname(m.group))}`, `${m.to}%${d.people.added.includes(m.person) ? ' · new person' : ''}`, { type: 'person', id: m.person }))))
-  out.push(sec('Left', d.memberships.filter(m => m.kind === 'left' && !m.moved).map(m => item('high', `${escHtml(pname(m.person))} left ${escHtml(gname(m.group))}`, `was ${m.from}%${d.people.removed.includes(m.person) ? ' · no longer in the document' : ''}`, state.people[m.person] ? { type: 'person', id: m.person } : null))))
-  out.push(sec('Share changes', d.memberships.filter(m => m.kind === 'share').map(m => item('medium', `${escHtml(pname(m.person))} in ${escHtml(gname(m.group))}: ${m.from}% → ${m.to}%`, '', { type: 'person', id: m.person }))))
+  out.push(sec('Moved', d.moves.map(m => item('medium', `${escHtml(pname(m.person))}: ${escHtml(gname(m.from))} → ${escHtml(gname(m.to))}`, m.fromPct !== m.pct ? `${escHtml(m.fromPct)}% → ${escHtml(m.pct)}%` : `${escHtml(m.pct)}%`, state.people[m.person] ? { type: 'person', id: m.person } : null))))
+  out.push(sec('Joined', d.memberships.filter(m => m.kind === 'joined' && !m.moved).map(m => item('low', `${escHtml(pname(m.person))} joined ${escHtml(gname(m.group))}`, `${escHtml(m.to)}%${d.people.added.includes(m.person) ? ' · new person' : ''}`, { type: 'person', id: m.person }))))
+  out.push(sec('Left', d.memberships.filter(m => m.kind === 'left' && !m.moved).map(m => item('high', `${escHtml(pname(m.person))} left ${escHtml(gname(m.group))}`, `was ${escHtml(m.from)}%${d.people.removed.includes(m.person) ? ' · no longer in the document' : ''}`, state.people[m.person] ? { type: 'person', id: m.person } : null))))
+  out.push(sec('Share changes', d.memberships.filter(m => m.kind === 'share').map(m => item('medium', `${escHtml(pname(m.person))} in ${escHtml(gname(m.group))}: ${escHtml(m.from)}% → ${escHtml(m.to)}%`, '', { type: 'person', id: m.person }))))
   out.push(sec('Groups', [
     ...d.groups.added.map(id => item('low', `Added ${escHtml(gname(id))}`, '', { type: 'group', id })),
     ...d.groups.removed.map(id => item('high', `Removed ${escHtml(gname(id))}`, '', null)),
@@ -388,7 +388,7 @@ function avatarPicker(p, shirt) {
   const cur = p.avatar || null
   const spec = avatarSpec(p.name, cur, shirt)
   const activePreset = cur?.preset || (cur ? '' : 'seeded')
-  const presets = PRESETS.map(pr => `<button type="button" class="av-preset${activePreset === pr.id ? ' is-active' : ''}" data-preset="${pr.id}" title="${escHtml(pr.name)}" aria-label="${escHtml(pr.name)}"><img src="${avatarDataUrl(p.name, pr.spec, shirt)}" width="32" height="32" alt="" class="px-avatar"></button>`).join('')
+  const presets = PRESETS.map(pr => `<button type="button" class="av-preset${activePreset === pr.id ? ' is-active' : ''}" data-preset="${escHtml(pr.id)}" title="${escHtml(pr.name)}" aria-label="${escHtml(pr.name)}"><img src="${avatarDataUrl(p.name, pr.spec, shirt)}" width="32" height="32" alt="" class="px-avatar"></button>`).join('')
   const mine = myCharacter()
   const code = specToCode(spec)
   const designHref = `${PIXELDOLL}#c=${encodeURIComponent(code)}&name=${encodeURIComponent(p.name)}`
@@ -396,10 +396,10 @@ function avatarPicker(p, shirt) {
     <div class="av-grid">${presets}</div>
     <div class="av-row av-row--actions">
       ${mine ? `<button type="button" class="btn btn--secondary btn--sm av-mine" data-action="use-my-character" title="The character saved in your Neorgon cookie"><img src="${spriteDataUrl(mine, 1)}" width="24" height="24" alt="" class="px-avatar"> Use my character</button>` : `<a class="btn btn--ghost btn--sm" href="${PIXELDOLL}" target="_blank" rel="noopener">Make my character in Pixeldoll ↗</a>`}
-      <a class="btn btn--ghost btn--sm" href="${designHref}" target="_blank" rel="noopener" title="Open this look in Pixeldoll and fine-tune it">Design in Pixeldoll ↗</a>
+      <a class="btn btn--ghost btn--sm" href="${escHtml(designHref)}" target="_blank" rel="noopener" title="Open this look in Pixeldoll and fine-tune it">Design in Pixeldoll ↗</a>
     </div>
-    <label class="sheet-field"><span>Pixeldoll code (paste to apply)</span><input type="text" id="avatarCode" data-av-code="${p.id}" value="${cur?.code ? escHtml(cur.code) : ''}" placeholder="neoav1:… or a pixeldoll.neorgon.com link" spellcheck="false"></label>
-    <div class="av-row"><span>Shirt</span><input type="color" data-av="shirt" value="${escHtml(spec.shirt || shirt)}" aria-label="Shirt colour"> <button type="button" class="btn btn--ghost btn--sm" data-av="shirt" data-value="">Group colour</button>${cur ? ` <button type="button" class="btn btn--ghost btn--sm" data-preset="seeded">Reset to seeded</button>` : ''}</div>
+    <label class="sheet-field"><span>Pixeldoll code (paste to apply)</span><input type="text" id="avatarCode" data-av-code="${escHtml(p.id)}" value="${cur?.code ? escHtml(cur.code) : ''}" placeholder="neoav1:… or a pixeldoll.neorgon.com link" spellcheck="false"></label>
+    <div class="av-row"><span>Shirt</span><input type="color" data-av="shirt" value="${safeColor(spec.shirt, safeColor(shirt))}" aria-label="Shirt colour"> <button type="button" class="btn btn--ghost btn--sm" data-av="shirt" data-value="">Group colour</button>${cur ? ` <button type="button" class="btn btn--ghost btn--sm" data-preset="seeded">Reset to seeded</button>` : ''}</div>
   </fieldset>`
 }
 
@@ -426,7 +426,7 @@ function coreHoursHtml(g) {
   const hourHead = Array.from({ length: 24 }, (_, h) => `<i${h % 6 === 0 ? ' class="tick"' : ''}>${h % 6 === 0 ? h : ''}</i>`).join('')
   const row = (label, slots, cls = '') => `<div class="tz-row${cls}"><span class="tz-name">${escHtml(label)}</span><span class="tz-slots">${slots.map(on => `<b${on ? ' class="on"' : ''}></b>`).join('')}</span></div>`
   return `<div class="tz-strip">
-    <div class="tz-head"><span class="sheet-sub">Core hours, UTC</span><span class="tz-sum${ov.hours < 3 ? ' is-low' : ''}">${ov.hours} shared h</span></div>
+    <div class="tz-head"><span class="sheet-sub">Core hours, UTC</span><span class="tz-sum${ov.hours < 3 ? ' is-low' : ''}">${escHtml(ov.hours)} shared h</span></div>
     <div class="tz-row tz-row--hours"><span class="tz-name"></span><span class="tz-slots tz-slots--hours">${hourHead}</span></div>
     ${ov.known.map(k => row(`${k.person.name} ${fmtOffset(k.offset)}`, k.slots)).join('')}
     ${row('Shared', ov.shared, ' tz-row--shared')}

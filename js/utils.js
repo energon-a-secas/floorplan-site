@@ -10,6 +10,12 @@ export {
   showToast, copyText, downloadBlob, downloadText,
 } from './neorgon-dom.js'
 
+// Every value from a document (names, ids, colours) reaches the DOM through
+// template strings, and a document can arrive from a stranger's #d= link or
+// ?src= URL. Rule: escHtml every interpolated string, ids and data-*
+// attributes included, and pass colours through safeColor before they land
+// in a style attribute.
+
 /** Cached element lookup by id. The board re-creates #buildingLayer on every render, so a cached element is only trusted while it is still in the document. */
 const _els = {}
 export function $(id) {
@@ -69,6 +75,8 @@ export function rgba(hex, a) {
   return `rgba(${c.r},${c.g},${c.b},${a})`
 }
 export function isHex(v) { return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(v || '')) }
+/** A colour that is safe inside a style attribute: the value when it is #rgb or #rrggbb, else the fallback. Escaping alone would still let `red;background:url(...)` through. */
+export function safeColor(v, fallback = '#64748b') { return isHex(v) ? String(v) : fallback }
 
 /** Deterministic PRNG (mulberry32) + string hash, for seeded avatars. */
 export function hashStr(str) {
