@@ -157,3 +157,48 @@ test('two long Floorplan ids that differ only at the end stay two people', () =>
   assert.equal(W.previewMerge(W.normalizeWorkspace({}).ws, payload).next.people.length, 2)
   assert.deepEqual(payload.teams[0].members.map(m => m.person), ids)
 })
+
+test('a document whose id is a workspace id but names someone else is not saved over them', () => {
+  const ws = W.normalizeWorkspace({
+    v: 1,
+    people: [{ id: 'maya', name: 'Maya K', email: 'maya@example.com' }, { id: 'floorplan-ben', name: 'Ben Ito' }],
+    teams: [{ id: 'core', name: 'Core', members: [{ person: 'maya' }] }],
+  }).ws
+  const { model } = normalizeDoc({
+    people: [{ id: 'maya', name: 'Bob Stone' }, { id: 'ben', name: 'Rosa Diaz' }],
+    groups: [{ id: 'core', name: 'Infra', members: ['maya', 'ben'] }],
+  })
+  const payload = docToPayload(model, ws)
+  const idOf = (name) => payload.people.find(p => p.name === name).id
+  assert.notEqual(idOf('Bob Stone'), 'maya')
+  assert.ok(idOf('Bob Stone').startsWith(PREFIX))
+  assert.ok(!['floorplan-ben', 'maya'].includes(idOf('Rosa Diaz')), idOf('Rosa Diaz'))   // the prefixed id is someone else's too
+  assert.notEqual(payload.teams[0].id, 'core')
+  const merged = W.previewMerge(ws, payload)
+  assert.deepEqual(merged.updated, [])
+  assert.deepEqual(merged.teams.updated, [])
+  assert.equal(merged.next.people.find(p => p.id === 'maya').name, 'Maya K')
+  assert.equal(merged.next.teams.find(t => t.id === 'core').name, 'Core')
+  // the same document saved again adds nobody new
+  const again = W.previewMerge(merged.next, docToPayload(model, merged.next))
+  assert.deepEqual(again.added, [])
+  assert.deepEqual(again.teams.added, [])
+  // and a name that differs only in case or accents is still the same person
+  const same = normalizeDoc({ people: [{ id: 'maya', name: 'MAYA K' }], groups: [] }).model
+  assert.equal(docToPayload(same, ws).people[0].id, 'maya')
+})
+
+test('a 40-character tag whose lowercase is longer round-trips unchanged', () => {
+  const tag = 'İ'.repeat(40)
+  assert.ok(tag.toLowerCase().length > 40)
+  const ws = W.normalizeWorkspace({ v: 1, people: [{ id: 'ana', name: 'Ana', tags: [tag, 'Go'] }], teams: [] }).ws
+  assert.deepEqual(ws.people[0].tags, [tag, 'Go'])
+  const { model } = normalizeDoc(teamToDoc(ws))
+  const payload = docToPayload(model, ws)
+  assert.deepEqual(payload.people[0].tags, [tag, 'Go'])
+  const merged = W.previewMerge(ws, payload)
+  assert.deepEqual(merged.updated, [])
+  // one tag dropped in Floorplan: the other keeps its spelling, the long one too
+  model.people.ana.tags = model.people.ana.tags.filter(t => t !== 'go')
+  assert.deepEqual(docToPayload(model, ws).people[0].tags, [tag])
+})

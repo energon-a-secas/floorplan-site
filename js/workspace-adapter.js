@@ -11,6 +11,9 @@
 //  Ids: a person or group the workspace already holds goes back under that
 //  id, so a second save adds nobody. One Floorplan made itself goes as
 //  `floorplan-<id>` (the kit README's rule), so two tools' ids never collide.
+//  An id is the workspace's only while the name agrees: a document (a pasted
+//  file, a `#d=` link) whose `maya` is someone else goes under an id of its
+//  own, since the merge takes a carried id as the person and would rename them.
 //  Every value leaves through the kit's validators; the page normalizes the
 //  payload again anyway, since a link is untrusted wherever it came from.
 //
@@ -28,6 +31,7 @@ export const TEAM_TITLE = 'My team'
 
 const NAME_MAX = 120  // the kit's cap: a shorter one would cut a name and the save would write it back cut
 const ID_MAX = 48     // the kit's id length
+const TAG_MAX = 40    // the kit's tag length
 
 /** A workspace (already normalized by the kit) as a Floorplan document tree. */
 export function teamToDoc(ws, { title = TEAM_TITLE } = {}) {
@@ -59,24 +63,42 @@ export function isBlank(model) {
   return !Object.keys(model.people || {}).length && !Object.keys(model.groups || {}).length
 }
 
-// The id to send: the workspace's own when it holds one, else Floorplan's, prefixed.
-// Past 48 characters the tail becomes a hash of the whole id, so two long ids
-// that differ only at the end stay two people.
-function idFor(id, known) {
-  const own = W.slug(id)
-  if (own && known.has(own)) return own
-  const full = own.startsWith(PREFIX) ? own : PREFIX + own   // both parts are slugs already
-  if (full.length <= ID_MAX) return full
-  const tail = '-' + W.hashString(own).toString(36)
-  return full.slice(0, ID_MAX - tail.length).replace(/-+$/, '') + tail
+// Two names for one person (or team): the kit's folded form, so case and accents
+// do not split them; a name with no letter or digit compares as written.
+function sameName(a, b) {
+  const fa = W.foldName(a), fb = W.foldName(b)
+  return fa || fb ? fa === fb : W.str(a, NAME_MAX) === W.str(b, NAME_MAX)
 }
 
-// A tag list Floorplan lowercased goes back in the workspace's spelling.
+// The id to send. `known` maps the ids the workspace holds to their names. The
+// workspace's own id when it holds one under this name; else Floorplan's,
+// prefixed; and when that prefixed id is held by someone else too, one with a
+// hash of the name on the end. Past 48 characters the tail becomes a hash of
+// the whole id, so two long ids that differ only at the end stay two people.
+function idFor(id, name, known) {
+  const own = W.slug(id)
+  const free = (x) => !known.has(x) || sameName(known.get(x), name)
+  if (own && known.has(own) && free(own)) return own
+  const full = fit(own.startsWith(PREFIX) ? own : PREFIX + own, own)   // both parts are slugs already
+  if (free(full)) return full
+  return fit(full + '-' + W.hashString(W.foldName(name) || W.str(name, NAME_MAX)).toString(36), own + '\n' + name)
+}
+
+function fit(id, seed) {
+  if (id.length <= ID_MAX) return id
+  const tail = '-' + W.hashString(seed).toString(36)
+  return id.slice(0, ID_MAX - tail.length).replace(/-+$/, '') + tail
+}
+
+// A tag list Floorplan lowercased goes back in the workspace's spelling. Both
+// sides are compared after the same 40-character cap, since a lowercase can be
+// longer than its capital (Turkish İ is two characters lowercased).
+const capped = (t) => W.str(t.toLowerCase(), TAG_MAX)
 function tagsFor(tags, stored) {
   const theirs = Array.isArray(stored) ? stored : []
-  if (theirs.length && JSON.stringify(tags) === JSON.stringify([...new Set(theirs.map(t => t.toLowerCase()))])) return theirs.slice()
-  const spelling = new Map(theirs.map(t => [t.toLowerCase(), t]))
-  return tags.map(t => spelling.get(t.toLowerCase()) || t)
+  if (theirs.length && JSON.stringify(tags) === JSON.stringify([...new Set(theirs.map(capped))])) return theirs.slice()
+  const spelling = new Map(theirs.map(t => [capped(t), t]))
+  return tags.map(t => spelling.get(capped(t)) || t)
 }
 
 // The colour normalizeDoc gives a group that has none: its palette slot at the
@@ -91,14 +113,14 @@ export function docToPayload(model, ws = null) {
   const stored = W.isMap(ws) ? W.normalizeWorkspace(ws).ws : null
   const storedPeople = new Map(stored ? stored.people.map(p => [p.id, p]) : [])
   const storedTeams = new Map(stored ? stored.teams.map(t => [t.id, t]) : [])
-  const peopleIds = new Set(storedPeople.keys())
-  const teamIds = new Set(storedTeams.keys())
+  const peopleIds = new Map([...storedPeople].map(([id, p]) => [id, p.name]))
+  const teamIds = new Map([...storedTeams].map(([id, t]) => [id, t.name]))
   const ids = new Map()
   const people = []
   for (const p of Object.values(model.people || {})) {
     const name = W.str(p.name, 120)
     if (!W.visible(name)) continue
-    const id = idFor(p.id, peopleIds)
+    const id = idFor(p.id, name, peopleIds)
     ids.set(p.id, id)
     const out = { id, name }
     const title = W.str(p.role, 120); if (title) out.title = title
@@ -106,7 +128,7 @@ export function docToPayload(model, ws = null) {
     const tz = W.zone(String(p.tz || '')); if (tz) out.tz = tz
     const color = W.color(p.color); if (color) out.color = color
     const avatar = p.avatar && W.avatar(p.avatar.code); if (avatar) out.avatar = avatar
-    const tags = tagsFor((Array.isArray(p.tags) ? p.tags : []).map(t => W.str(t, 40)).filter(Boolean), storedPeople.get(id)?.tags).slice(0, W.LIMITS.tags)
+    const tags = tagsFor((Array.isArray(p.tags) ? p.tags : []).map(t => W.str(t, TAG_MAX)).filter(Boolean), storedPeople.get(id)?.tags).slice(0, W.LIMITS.tags)
     if (tags.length) out.tags = tags
     people.push(out)
   }
@@ -116,7 +138,7 @@ export function docToPayload(model, ws = null) {
   for (const g of groups) {
     const name = W.str(g.name, 120)
     if (!W.visible(name)) continue
-    const out = { id: idFor(g.id, teamIds), name }
+    const out = { id: idFor(g.id, name, teamIds), name }
     const was = storedTeams.get(out.id)
     const color = W.color(g.color)
     if (color && !(was && !was.color && color === W.color(filledColor(model, g, tops)))) out.color = color
