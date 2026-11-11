@@ -9,7 +9,7 @@
 //    people and groups to the Workspace page's review.
 //  - The visitor's working hours are Floorplan's core hours (the overlap
 //    Insight, the group sheet's strip and Sim's clock).
-//  - The gear in the header and the , key open the Settings sheet, whose
+//  - The Settings button in the header and the , key open the Settings sheet, whose
 //    Floorplan section holds the viewer's own preferences (the tour, the
 //    puzzle scores). Display options stay in the document: they travel with links.
 //
@@ -24,6 +24,7 @@ import { afterChange, renderBoard, renderRoster, renderInsights, renderDetail } 
 import { showToast, $ } from './utils.js'
 import { setCoreHours, coreLabel } from './timezones.js'
 import { teamToDoc, docToPayload, isBlank, coreFromPrefs } from './workspace-adapter.js'
+import { readMe } from './neorgon-workspace-core.js'
 
 const TOUR_KEY = 'floorplan-tour-v1'
 const BEST_KEY = 'floorplan-puzzle-best'
@@ -34,6 +35,13 @@ let hoursNote = null    // the Floorplan section's core-hours line, while the sh
 const editable = () => !ui.readonly && !ui.embed
 
 export function startWorkspace() {
+  // An embed has no gear and never uses the team, so it loads no frame: a page
+  // that embeds Floorplan must not pull the visitor's workspace into it. The
+  // visitor's own working hours (the neo_me cookie, validated) still set core hours.
+  if (ui.embed) {
+    try { applyPrefs(readMe(document.cookie)) } catch { applyPrefs(null) }
+    return null
+  }
   try {
     ws = NeoWorkspace.init({
       tool: 'floorplan',
@@ -53,12 +61,39 @@ export function startWorkspace() {
   return ws
 }
 
-/** After the header kit has run: the gear joins .header-actions. */
+/** After the header kit has run: the Settings button (#settingsBtn, in the markup) comes alive. */
 export function mountWorkspaceGear() {
-  if (!ws || ui.embed) return
-  ws.mountGear()
-  // The header kit built its mobile overflow before the gear existed; let it collapse the gear too.
-  try { window.NeoHeader?.syncOverflow?.() } catch { /* an older header kit: the gear stays in the bar */ }
+  const btn = $('settingsBtn')
+  if (!btn) return
+  if (!ws) { btn.hidden = true; return }
+  // Not ws.mountGear(): the kit's gear is icon-only and showed as a bare icon in the
+  // phone menu. Floorplan binds , itself (settingsKey) and keeps the button's
+  // aria-keyshortcuts in step with the sheet's switch for the key.
+  const setKeyOff = ws.setKeyOff
+  ws.setKeyOff = off => { setKeyOff(off); markSettings() }
+  markSettings()
+}
+
+function markSettings() {
+  const btn = $('settingsBtn'); if (!btn || !ws) return
+  const on = !ws.keyState().off
+  if (on) btn.setAttribute('aria-keyshortcuts', ',')
+  else btn.removeAttribute('aria-keyshortcuts')
+  btn.title = on ? 'Settings (,)' : 'Settings'
+}
+
+/** The Settings button. */
+export function openSettings(invoker) {
+  if (ws) ws.open({ invoker: invoker || $('settingsBtn') })
+}
+
+/** The , key (events.js onKeydown, after its own typing check). True when it opened Settings. */
+export function settingsKey(e) {
+  if (!ws || e.key !== ',' || e.metaKey || e.ctrlKey || e.altKey || e.isComposing || e.defaultPrevented) return false
+  if (ws.keyState().off || document.querySelector('dialog.neo-ws-sheet[open]')) return false
+  e.preventDefault()
+  openSettings($('settingsBtn'))
+  return true
 }
 
 function applyPrefs(p) {
@@ -96,7 +131,7 @@ export function useMyTeam(workspace) {
     const text = $('teamDialogText')
     if (text) text.textContent = `Your team (${n} ${n === 1 ? 'person' : 'people'}${m ? `, ${m} ${m === 1 ? 'team' : 'teams'}` : ''}) replaces ${state.meta.title ? `"${state.meta.title}"` : 'the map on the board'}. Undo (Cmd/Ctrl+Z) brings the current map back.`
     if (!dlg.open) dlg.showModal()
-    dlg.querySelector('[data-action="team-replace"]')?.focus()
+    dlg.querySelector('.modal__footer [data-action="dialog-close"]')?.focus()   // the safe choice: Enter keeps the map
   }, 0)
 }
 

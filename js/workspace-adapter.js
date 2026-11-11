@@ -13,14 +13,21 @@
 //  `floorplan-<id>` (the kit README's rule), so two tools' ids never collide.
 //  Every value leaves through the kit's validators; the page normalizes the
 //  payload again anyway, since a link is untrusted wherever it came from.
+//
+//  Lossless round trip: using the team and saving it back unedited changes
+//  nothing. Names keep the kit's 120 characters; a tag Floorplan lowercased goes
+//  back in the workspace's spelling; a group colour Floorplan only filled in
+//  (the palette slot, or a parent's) is not sent for a team that has none.
 // ════════════════════════════════════════════════════════════
 
 import * as W from './neorgon-workspace-core.js'
+import { colorAt } from './utils.js'
 
 export const PREFIX = 'floorplan-'
 export const TEAM_TITLE = 'My team'
 
-const NAME_MAX = 60   // Floorplan's own cap on a name (state.js addPerson)
+const NAME_MAX = 120  // the kit's cap: a shorter one would cut a name and the save would write it back cut
+const ID_MAX = 48     // the kit's id length
 
 /** A workspace (already normalized by the kit) as a Floorplan document tree. */
 export function teamToDoc(ws, { title = TEAM_TITLE } = {}) {
@@ -53,17 +60,39 @@ export function isBlank(model) {
 }
 
 // The id to send: the workspace's own when it holds one, else Floorplan's, prefixed.
+// Past 48 characters the tail becomes a hash of the whole id, so two long ids
+// that differ only at the end stay two people.
 function idFor(id, known) {
   const own = W.slug(id)
   if (own && known.has(own)) return own
-  if (own.startsWith(PREFIX)) return own
-  return W.slug(PREFIX + own).slice(0, 48)
+  const full = own.startsWith(PREFIX) ? own : PREFIX + own   // both parts are slugs already
+  if (full.length <= ID_MAX) return full
+  const tail = '-' + W.hashString(own).toString(36)
+  return full.slice(0, ID_MAX - tail.length).replace(/-+$/, '') + tail
+}
+
+// A tag list Floorplan lowercased goes back in the workspace's spelling.
+function tagsFor(tags, stored) {
+  const theirs = Array.isArray(stored) ? stored : []
+  if (theirs.length && JSON.stringify(tags) === JSON.stringify([...new Set(theirs.map(t => t.toLowerCase()))])) return theirs.slice()
+  const spelling = new Map(theirs.map(t => [t.toLowerCase(), t]))
+  return tags.map(t => spelling.get(t.toLowerCase()) || t)
+}
+
+// The colour normalizeDoc gives a group that has none: its palette slot at the
+// top level, its parent's below.
+function filledColor(model, g, tops) {
+  if (g.parent == null) { const i = tops.indexOf(g); return i >= 0 ? colorAt(i) : '' }
+  return model.groups[g.parent]?.color || colorAt(0)
 }
 
 /** The Floorplan model as a save payload. `ws` is the workspace the tool holds now (or null). */
 export function docToPayload(model, ws = null) {
-  const peopleIds = new Set(W.isMap(ws) && Array.isArray(ws.people) ? ws.people.map(p => p && p.id).filter(W.isId) : [])
-  const teamIds = new Set(W.isMap(ws) && Array.isArray(ws.teams) ? ws.teams.map(t => t && t.id).filter(W.isId) : [])
+  const stored = W.isMap(ws) ? W.normalizeWorkspace(ws).ws : null
+  const storedPeople = new Map(stored ? stored.people.map(p => [p.id, p]) : [])
+  const storedTeams = new Map(stored ? stored.teams.map(t => [t.id, t]) : [])
+  const peopleIds = new Set(storedPeople.keys())
+  const teamIds = new Set(storedTeams.keys())
   const ids = new Map()
   const people = []
   for (const p of Object.values(model.people || {})) {
@@ -77,17 +106,20 @@ export function docToPayload(model, ws = null) {
     const tz = W.zone(String(p.tz || '')); if (tz) out.tz = tz
     const color = W.color(p.color); if (color) out.color = color
     const avatar = p.avatar && W.avatar(p.avatar.code); if (avatar) out.avatar = avatar
-    const tags = (Array.isArray(p.tags) ? p.tags : []).map(t => W.str(t, 40)).filter(Boolean).slice(0, W.LIMITS.tags)
+    const tags = tagsFor((Array.isArray(p.tags) ? p.tags : []).map(t => W.str(t, 40)).filter(Boolean), storedPeople.get(id)?.tags).slice(0, W.LIMITS.tags)
     if (tags.length) out.tags = tags
     people.push(out)
   }
   const groups = Object.values(model.groups || {}).sort((a, b) => a.order - b.order)
+  const tops = Object.values(model.groups || {}).filter(g => g.parent == null)
   const teams = []
   for (const g of groups) {
     const name = W.str(g.name, 120)
     if (!W.visible(name)) continue
     const out = { id: idFor(g.id, teamIds), name }
-    const color = W.color(g.color); if (color) out.color = color
+    const was = storedTeams.get(out.id)
+    const color = W.color(g.color)
+    if (color && !(was && !was.color && color === W.color(filledColor(model, g, tops)))) out.color = color
     out.members = (g.members || []).filter(m => ids.has(m.person)).map(m => ({ person: ids.get(m.person), pct: Math.min(100, Math.max(1, Math.round(Number(m.pct) || 100))) }))
     teams.push(out)
   }

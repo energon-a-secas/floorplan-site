@@ -19,6 +19,7 @@ import { bindDnd, commitDrop } from './dnd.js'
 import { exportYamlFile, exportJsonFile, exportMarkdownFile, exportMermaidFile, copyShareLink, copyPrompt, importFile, importText, parseAny, openAsSlides } from './export.js'
 import { takeSnapshot, deleteSnapshot, enterPreview, exitPreview, restorePreview, setCompare, isLocked } from './versions.js'
 import { exportSVG, exportPNG } from './image-export.js'
+import { openSettings, settingsKey } from './workspace-link.js'
 
 export function bindEvents() {
   bindDnd()
@@ -128,7 +129,7 @@ function onClick(e) {
   if (t.closest('.room--title')) { select('group', t.closest('.room--title').dataset.group); return }
 }
 
-const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'sim', 'help', 'dialog-close', 'fit', 'share', 'toggle-versions', 'preview-version', 'exit-preview', 'drawer-tab', 'compare-clear', 'compare-load', 'import-close', 'import-apply', 'import-file', 'tour-next', 'tour-skip'])
+const VIEW_ACTIONS = new Set(['select-group', 'close-detail', 'focus-ref', 'toggle-insights', 'close-insights', 'toggle-yaml', 'yaml-copy', 'toggle-avatars', 'visit', 'sim', 'help', 'dialog-close', 'fit', 'share', 'toggle-versions', 'preview-version', 'exit-preview', 'drawer-tab', 'compare-clear', 'compare-load', 'import-close', 'import-apply', 'import-file', 'tour-next', 'tour-skip', 'settings'])
 const PREVIEW_OK = new Set([...VIEW_ACTIONS, 'restore-version', 'delete-version', 'snapshot-now'])
 function runAction(action, el, e) {
   const id = el.dataset.id
@@ -148,6 +149,7 @@ function runAction(action, el, e) {
     case 'clear-layout': snapshot(); setLayout(id, null); afterChange(); break
     case 'relayout': snapshot(); clearLayouts(); afterChange(); showToast('Layout cleared; rooms packed automatically'); break
     case 'load-example': loadExample(id); break
+    case 'settings': openSettings(el); break
     case 'use-team': import('./workspace-link.js').then(m => m.useTeamFromPage()); break
     case 'team-replace': import('./workspace-link.js').then(m => m.confirmTeam()); break
     case 'focus-ref': focusRef(el.dataset.type, el.dataset.id); break
@@ -347,6 +349,7 @@ function onKeydown(e) {
   }
   if (typing) return
   if (e.key === '?' && !e.metaKey && !e.ctrlKey) { $('helpDialog')?.showModal(); return }
+  if (settingsKey(e)) return
   const el = document.activeElement
   if (el?.matches('[data-pct-bar]') && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) {
     e.preventDefault()

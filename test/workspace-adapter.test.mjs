@@ -116,3 +116,44 @@ test('the overlap check follows the core hours the visitor set', () => {
   assert.deepEqual(coreHours(), { start: 8, end: 18 })
   setCoreHours({ start: 9, end: 17 })
 })
+
+test('using the team and saving it back unedited changes nothing in the workspace', () => {
+  const long = 'Maria de los Angeles Fernandez Gutierrez de la Concepcion Smith'
+  const ws = W.normalizeWorkspace({
+    v: 1,
+    people: [
+      { id: 'ana', name: 'Ana Rojas', tags: ['Go', 'SRE'], tz: 'America/Santiago', avatar: 'neoav1:abc_DEF-1' },
+      { id: 'longname', name: long, title: 'Staff engineer', location: 'Santiago' },
+      { id: 'kai', name: 'Kai Tan', color: '#fde68a', tags: ['ML', 'ml-ops'] },
+    ],
+    teams: [
+      { id: 'core', name: 'Core', members: [{ person: 'ana' }, { person: 'kai', pct: 40 }] },
+      { id: 'payments', name: 'Payments', color: '#be185d', members: [{ person: 'longname' }] },
+      { id: 'growth', name: 'Growth', members: [{ person: 'kai', pct: 60 }] },
+    ],
+  }).ws
+  const { model } = normalizeDoc(teamToDoc(ws))
+  assert.equal(model.people.longname.name, long)
+  const payload = docToPayload(model, ws)
+  assert.deepEqual(payload.people.find(p => p.id === 'ana').tags, ['Go', 'SRE'])
+  assert.equal(payload.teams.find(t => t.id === 'core').color, undefined)
+  const merged = W.previewMerge(ws, payload)
+  assert.deepEqual(merged.added, [])
+  assert.deepEqual(merged.updated, [])
+  assert.deepEqual(merged.teams.added, [])
+  assert.deepEqual(merged.teams.updated, [])
+  // a colour the visitor picked in Floorplan still goes
+  model.groups.core.color = '#123456'
+  assert.equal(docToPayload(model, ws).teams.find(t => t.id === 'core').color, '#123456')
+})
+
+test('two long Floorplan ids that differ only at the end stay two people', () => {
+  const base = 'a'.repeat(44)
+  const { model } = normalizeDoc({ people: [{ id: base + '-one', name: 'One' }, { id: base + '-two', name: 'Two' }], groups: [{ name: 'G', members: [base + '-one', base + '-two'] }] })
+  const payload = docToPayload(model, null)
+  const ids = payload.people.map(p => p.id)
+  assert.equal(new Set(ids).size, 2)
+  assert.ok(ids.every(id => W.isId(id) && id.length <= 48 && id.startsWith(PREFIX)), ids.join())
+  assert.equal(W.previewMerge(W.normalizeWorkspace({}).ws, payload).next.people.length, 2)
+  assert.deepEqual(payload.teams[0].members.map(m => m.person), ids)
+})

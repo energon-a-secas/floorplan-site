@@ -11,7 +11,7 @@
 import { state, ui, childrenOf } from './state.js'
 import { computeLayout } from './layout.js'
 import { escHtml, safeColor } from './utils.js'
-import { seatHtml, vacantSeatsHtml, ghostSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml, sortedMembers } from './parts.js'
+import { seatHtml, vacantSeatsHtml, ghostSeatsHtml, groupHeadHtml, faceHtml, capacityInfo, pctBarHtml, sortedMembers, deskName } from './parts.js'
 import { totals } from './parts.js'
 
 export function renderBuilding() {
@@ -93,7 +93,7 @@ function straddleHtml(s) {
   return `<div class="straddle" style="--x:${s.x};--y:${s.y}">
     <div class="seat seat--compact seat--straddle${sel ? ' is-selected' : ''}${picked ? ' is-picked' : ''}" data-seat="${aid}:${pid}" data-drag="person" data-person="${pid}" data-from="${aid}" data-straddle="${bid}" data-band="${t.total > 100 ? 'over' : t.total < 100 ? 'under' : 'ok'}" tabindex="0" role="button" aria-label="${escHtml(label)}" style="--seat-color:${safeColor(ga.color)};--seat-color-b:${safeColor(gb.color)}" data-svg="box">
       ${faceHtml(p, ga.color)}
-      <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(p.name)}</span></span>
+      <span class="seat-meta"><span class="seat-name" data-svg="text" title="${escHtml(p.name)}">${escHtml(deskName(p.name))}</span></span>
       <span class="pct-pair"><button type="button" class="pct-badge" data-pct="${aid}:${pid}" title="Share in ${escHtml(ga.name)}" data-svg="badge">${escHtml(ma.pct)}%</button><button type="button" class="pct-badge" data-pct="${bid}:${pid}" title="Share in ${escHtml(gb.name)}" data-svg="badge">${escHtml(mb.pct)}%</button></span>
       <span class="pct-bars">${pctBarHtml(ga, p, ma.pct, t.total > 100 ? 'over' : 'ok', 'pct-bar--a')}${pctBarHtml(gb, p, mb.pct, t.total > 100 ? 'over' : 'ok', 'pct-bar--b')}</span>
     </div>

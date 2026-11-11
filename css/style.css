@@ -502,6 +502,9 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: max(.75rem, .85em)
 .menu-wrap { position: relative; }
 .header-menu small { display: block; font-size: 12px; opacity: .7; font-weight: 400; }
 .nav-link--badge { position: relative; }
+/* Settings: an icon in the bar, its word kept for screen readers; the word shows in the phone menu. */
+#settingsBtn .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.header-overflow #settingsBtn .nav-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
 .insight-badge {
   margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px;
   display: inline-grid; place-items: center; border-radius: 999px;
@@ -586,14 +589,16 @@ body.yaml-open .workspace { grid-template-columns: var(--roster-w) minmax(0, 1fr
 }
 .doc-title:hover, .doc-title:focus { border-color: var(--border); background: var(--bg); }
 /* The toolbar in groups by purpose (Build, History, View, Play), Clear set apart at the end. */
-.toolbar--grouped { flex: 1 1 auto; gap: var(--space-2) var(--space-3); }
+.toolbar--grouped { flex: 1 1 auto; gap: var(--space-2); }   /* tight enough that Clear stays on the row at 1440 */
 .tool-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
-.tool-group + .tool-group { padding-left: var(--space-3); border-left: 1px solid var(--border); }
+.tool-group + .tool-group { padding-left: var(--space-2); border-left: 1px solid var(--border); }
 .tool-group--end { margin-left: auto; }
 .tool-group--end, .tool-group:has(+ .tool-group--end) + .tool-group--end { border-left: none; padding-left: 0; }
 .i-chev { flex-shrink: 0; opacity: .8; }
 @media (max-width: 700px) {
-  .tool-group + .tool-group { padding-left: 0; border-left: none; }
+  /* On a phone the groups flow as one list (a group per row left half rows empty); Clear keeps the far end. */
+  .tool-group { display: contents; }
+  .tool-group--end > .btn { margin-left: auto; }
 }
 .scale-field { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--text-muted); }
 .scale-field input { width: 90px; accent-color: var(--accent-bright); }
@@ -797,7 +802,8 @@ body.drawer-open .drawer-scrim { opacity: 1; pointer-events: auto; }
 .insight-detail { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.5; margin-top: 2px; }
 
 /* ── Dialogs ───────────────────────────────────────────────── */
-.fp-dialog { width: min(100% - 32px, 640px); padding: 0; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow-modal); }
+.fp-dialog { margin: auto; max-height: calc(100dvh - 32px); width: min(100% - 32px, 640px); padding: 0;   /* margin: the global reset took the UA's centring away */
+  border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow-modal); }
 .fp-dialog::backdrop { background: rgba(2,4,12,.8); backdrop-filter: blur(8px); }
 .fp-dialog .modal__body p { margin-bottom: 8px; }
 .help-body p { line-height: 1.55; }
@@ -828,8 +834,9 @@ body.readonly .room-resize, body.readonly .room-grip, body.readonly .chip-remove
   .workspace { grid-template-columns: 1fr; height: auto; min-height: var(--ws-h); grid-template-rows: auto minmax(0, 1fr); }
   body.yaml-open .workspace { grid-template-columns: 1fr; }
   .roster { border-right: none; border-bottom: 1px solid var(--border-subtle); max-height: 34vh; }
-  .roster-list { flex-direction: row; flex-wrap: wrap; }
-  .chip { width: auto; }
+  /* Two chips to a row on a phone, names ellipsized: with 44px remove buttons a wrapping row held one. */
+  .roster-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 160px), 1fr)); align-content: start; }
+  .chip { width: auto; min-width: 0; gap: 6px; padding-inline: 6px; }
   .side-panel { position: fixed; top: 56px; right: 0; bottom: 0; width: min(100%, 440px); z-index: 340; }
   .detail-sheet { top: auto; bottom: 0; left: 0; right: 0; width: auto; max-height: 60vh; border-left: none; border-top: 1px solid var(--border-strong); }
   body.yaml-open .detail-sheet { right: 0; }
@@ -973,4 +980,8 @@ body.display-locations-off .seat-loc { display: none !important; }
   .chip-remove { min-width: 44px; min-height: 44px; }
   .room-grip, .room-resize { opacity: 1; width: 24px; height: 24px; }
   .roster-input { min-height: 44px; }
+}
+@media (pointer: coarse) and (max-width: 900px) {
+  .chip { padding-block: 0; }                          /* the 44px remove sets the chip's height */
+  .chip-remove { min-width: 32px; margin-right: -4px; } /* 44 tall, 32 wide: room for the name in a half-width chip */
 }

@@ -99,9 +99,14 @@ for (const eng of engines) {
     const csp = await page.evaluate(() => window.__csp)
     check(eng, 'no CSP violation', !csp.some(x => /frame|script/.test(x)), JSON.stringify(csp))
 
-    // The gear and the , key.
-    const gear = page.locator('.header-actions .neo-ws-gear')
-    check(eng, 'the gear sits in .header-actions and names the , key', await gear.count() === 1 && await gear.getAttribute('aria-keyshortcuts') === ',')
+    // The Settings button and the , key. Floorplan's own button, not the kit's gear.
+    const gear = page.locator('.header-actions #settingsBtn')
+    check(eng, 'Settings sits in .header-actions and names the , key', await gear.count() === 1 && await gear.getAttribute('aria-keyshortcuts') === ',' && await page.locator('.neo-ws-gear').count() === 0)
+    check(eng, 'the Settings button is named Settings', (await gear.getAttribute('aria-label') || (await gear.textContent()).trim()) === 'Settings')
+    await gear.click()
+    check(eng, 'the Settings button opens Settings', await page.locator('dialog.neo-ws-sheet[open]').count() === 1)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(100)
     await page.locator('#board').click({ position: { x: 4, y: 4 } })
     await page.keyboard.press(',')
     const sheet = page.locator('dialog.neo-ws-sheet[open]')
@@ -127,6 +132,10 @@ for (const eng of engines) {
     const dlg = page.locator('#teamDialog[open]')
     await dlg.waitFor({ timeout: 2000 })
     check(eng, 'a non-empty board asks before it is replaced', await dlg.count() === 1)
+    const box = await dlg.boundingBox()
+    const mid = (a, size, view) => Math.abs(a + size / 2 - view / 2) <= 2
+    check(eng, 'the replace dialog is centred', !!box && mid(box.x, box.width, 1440) && mid(box.y, box.height, 900), JSON.stringify(box))
+    check(eng, 'focus starts on the safe choice', (await page.evaluate(() => document.activeElement?.textContent.trim())) === 'Keep this map')
     await page.getByRole('button', { name: 'Keep this map' }).click()
     check(eng, 'Keep this map keeps it', JSON.stringify(await page.locator('#board .g-name').allInnerTexts()) === JSON.stringify(before))
     await page.keyboard.press(',')
@@ -151,14 +160,16 @@ for (const eng of engines) {
     const hex = W.colorFor({ id: 'ana' })
     check(eng, 'a colourless person gets colorFor(id)', anaBg === `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`, anaBg + ' ' + hex)
 
-    // Nothing under 12px in the chrome or the diagram.
-    const small = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => {
+    // Nothing under 12px in the header and the board, in both views; no desk name clipped.
+    // The footer is left out: its 11.5px note and stamp are the Footer Kit's, fleet-wide.
+    const tinyText = (pg) => pg.evaluate(() => [...document.querySelectorAll('body *')].filter(el => {
       if (!el.offsetParent || !el.childNodes.length) return false
       if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) return false
-      if (el.closest('.neo-footer, .header-bar, .visually-hidden')) return false
+      if (el.closest('.neo-footer, .visually-hidden, .nav-label')) return false
       return parseFloat(getComputedStyle(el).fontSize) < 12
     }).map(el => el.className + ':' + getComputedStyle(el).fontSize).slice(0, 8))
-    check(eng, 'no reading text under 12px', small.length === 0, JSON.stringify(small))
+    const small = await tinyText(page)
+    check(eng, 'no reading text under 12px (diagram)', small.length === 0, JSON.stringify(small))
 
     // Save these people: a link to the Workspace page's review carrying them.
     await page.keyboard.press(',')
@@ -167,7 +178,7 @@ for (const eng of engines) {
     await nav
     const got = W.parseFragment(new URL(page.url()).hash, { selfHostname: 'localhost' })
     const pay = got && got.op === 'save' ? W.decodePayload(got.payload) : null
-    check(eng, 'save opens the review with the same ids', !!pay && pay.ws.people.map(p => p.id).sort().join() === 'ana,ben,kai' && got.tool === 'floorplan', page.url().slice(0, 120))
+    check(eng, 'save opens the review with the same ids', !!pay && pay.ws.people.map(p => p.id).sort().join() === 'ana,ben,kai' && got.tool === 'floorplan', JSON.stringify(pay && pay.ws.people.map(p => p.id)))
 
     // An empty board offers the team.
     await go(page, `${TOOL}?v=${++v}`)
@@ -185,12 +196,44 @@ for (const eng of engines) {
     const pp = await phone.newPage()
     await go(pp, `${TOOL}?v=${++v}`)
     await pp.waitForTimeout(600)
-    const tiny = await pp.evaluate(() => [...document.querySelectorAll('.board-toolbar button, .roster button, .roster input')].filter(el => el.offsetParent).map(el => [el.textContent.trim() || el.getAttribute('aria-label'), el.getBoundingClientRect().height]).filter(([, h]) => h < 44))
+    const tiny = await pp.evaluate(() => [...document.querySelectorAll('.board-toolbar button, .roster button, .roster input, #teamDialog button')].filter(el => el.offsetParent).map(el => [el.textContent.trim() || el.getAttribute('aria-label'), el.getBoundingClientRect().height]).filter(([, h]) => h < 44))
     check(eng, 'toolbar and roster controls are 44px on touch', tiny.length === 0, JSON.stringify(tiny))
-    check(eng, 'on a phone the gear collapses into the header menu', await pp.locator('.header-overflow-menu .neo-ws-gear').count() === 1)
+    check(eng, 'on a phone Settings collapses into the header menu', await pp.locator('.header-overflow-menu #settingsBtn').count() === 1)
+    await pp.locator('.header-overflow-toggle').click()
+    const word = await pp.locator('.header-overflow-menu #settingsBtn .nav-label').evaluate(e => [e.textContent, e.getBoundingClientRect().width])
+    check(eng, 'in the phone menu Settings shows its word', word[0] === 'Settings' && word[1] > 30, JSON.stringify(word))
+    await pp.keyboard.press('Escape')
+    const chips = await pp.evaluate(() => [...document.querySelectorAll('#rosterList .chip')].slice(0, 2).map(c => Math.round(c.getBoundingClientRect().top)))
+    check(eng, 'the phone roster holds two chips to a row', chips.length === 2 && chips[0] === chips[1], JSON.stringify(chips))
     const scroll = await pp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     check(eng, 'no sideways scroll at 390', scroll <= 0, String(scroll))
+    await pp.evaluate(() => document.getElementById('teamDialog').showModal())
+    const dlgTiny = await pp.evaluate(() => [...document.querySelectorAll('#teamDialog button')].map(el => [el.textContent.trim() || el.getAttribute('aria-label'), el.getBoundingClientRect().height]).filter(([, h]) => h < 44))
+    check(eng, 'the replace dialog buttons are 44px on touch', dlgTiny.length === 0, JSON.stringify(dlgTiny))
     await phone.close()
+
+    // The Building view of the Atlas example (a fresh context: no saved map), as at 1440.
+    const wide = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    await wide.addInitScript(() => { try { localStorage.setItem('floorplan-tour-v1', '1') } catch { /* none */ } })
+    const bp = await wide.newPage()
+    await go(bp, `${TOOL}?mode=building&v=${++v}`)
+    await bp.waitForTimeout(800)
+    const smallB = await tinyText(bp)
+    check(eng, 'no reading text under 12px (building)', smallB.length === 0, JSON.stringify(smallB))
+    const clipped = await bp.evaluate(() => [...document.querySelectorAll('.building .seat-name')].filter(e => e.offsetParent && e.scrollHeight > e.clientHeight + 1).map(e => e.textContent))
+    check(eng, 'no desk name is cut off in the building', clipped.length === 0, JSON.stringify(clipped))
+    const plate = await bp.locator('.building .seat--compact[data-person] .seat-name').first().evaluate(e => [e.textContent, e.title])
+    check(eng, 'a desk shows the short name, the full one in its title', /^\S+ \S\.$/.test(plate[0]) && plate[1].startsWith(plate[0].slice(0, -2)), JSON.stringify(plate))
+    const tbH = await bp.locator('.board-toolbar').evaluate(e => e.getBoundingClientRect().height)
+    check(eng, 'the building toolbar keeps to two rows at 1440', tbH <= 110, String(tbH))
+    await wide.close()
+
+    // An embed loads no workspace frame: a page that embeds Floorplan never reads the visitor's team.
+    const emb = await ctx.newPage()
+    await go(emb, `${TOOL}?embed=1&v=${++v}`)
+    await emb.waitForTimeout(800)
+    check(eng, 'an embed loads no workspace frame and shows no Settings', await emb.locator('iframe').count() === 0 && !(await emb.locator('#settingsBtn').isVisible()))
+    await emb.close()
 
     check(eng, 'no page errors', errors.length === 0, JSON.stringify(errors.slice(0, 5)))
   } catch (err) {

@@ -15,6 +15,17 @@ let totalsCache = null
 export function beginFrame() { totalsCache = personTotals() }
 export function totals() { return totalsCache || (totalsCache = personTotals()) }
 
+// A desk's name plate: the first name and the last initial ("Noor H."). A desk is
+// 1.55 cells wide and its name has one 12px line, so a full name wrapped and the
+// second line went under the share bar. The full name stays in the seat's
+// aria-label and the plate's title.
+export function deskName(name) {
+  const words = String(name || '').trim().split(/\s+/).filter(Boolean)
+  if (words.length < 2) return words[0] || ''
+  const last = [...words[words.length - 1]][0]
+  return `${words[0]} ${last}.`
+}
+
 export function faceHtml(person, color, { px = 32, forceInitials = false } = {}) {
   if (ui.avatars && !forceInitials) return avatarImg(person.name, color, { px, custom: person.avatar || null })
   // Initials are the Workspace Kit's face: the person's own colour, else one from their id, so a
@@ -38,7 +49,7 @@ export function seatHtml(group, m, { compact = false } = {}) {
   return `<div class="seat${compact ? ' seat--compact' : ''}${picked ? ' is-picked' : ''}${sel ? ' is-selected' : ''}${mark ? ' diff-' + escHtml(mark.kind) : ''}" data-seat="${seatKey}" data-drag="person" data-person="${escHtml(p.id)}" data-from="${escHtml(group.id)}" data-band="${escHtml(band)}" tabindex="0" role="button" aria-label="${escHtml(label)}" style="--seat-color:${safeColor(group.color)}" data-svg="box">
     ${mark ? `<span class="diff-tag diff-tag--${escHtml(mark.kind)}" data-svg="tag">${escHtml(mark.text)}</span>` : ''}
     ${faceHtml(p, group.color)}
-    <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(p.name)}</span>${p.location ? `<span class="seat-loc" data-svg="text">${escHtml(p.location)}</span>` : ''}</span>
+    <span class="seat-meta">${compact ? `<span class="seat-name" data-svg="text" title="${escHtml(p.name)}">${escHtml(deskName(p.name))}</span>` : `<span class="seat-name" data-svg="text">${escHtml(p.name)}</span>`}${p.location ? `<span class="seat-loc" data-svg="text">${escHtml(p.location)}</span>` : ''}</span>
     ${showPct ? `<button type="button" class="pct-badge" data-pct="${seatKey}" data-band="${escHtml(band)}" title="Type the share" aria-label="Share ${escHtml(m.pct)}%, click to type a value" data-svg="badge">${escHtml(m.pct)}%</button>` : ''}
     ${pctBarHtml(group, p, m.pct, band)}
   </div>`
@@ -60,7 +71,7 @@ export function ghostSeatsHtml(group, { compact = false } = {}) {
   return list.map(gh => `<div class="seat seat--ghost seat--ghost-${escHtml(gh.kind)}${compact ? ' seat--compact' : ''}" title="${escHtml(gh.name)}: ${escHtml(gh.text)}" aria-label="${escHtml(gh.name)} ${escHtml(gh.text)} (baseline)" style="--seat-color:${safeColor(group.color)}" data-svg="box">
     <span class="diff-tag diff-tag--${escHtml(gh.kind)}" data-svg="tag">${escHtml(gh.text)}</span>
     ${state.people[gh.person] ? faceHtml(state.people[gh.person], '#475569') : `<span class="face-disc" style="--face:#475569;width:32px;height:32px">${escHtml(initials(gh.name))}</span>`}
-    <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(gh.name)}</span><span class="seat-loc">${escHtml(gh.pct)}% before</span></span>
+    <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(compact ? deskName(gh.name) : gh.name)}</span><span class="seat-loc">${escHtml(gh.pct)}% before</span></span>
   </div>`).join('')
 }
 
