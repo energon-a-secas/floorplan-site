@@ -500,6 +500,9 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: max(.75rem, .85em)
 .mode-switch .nav-link:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; margin-left: -1px; }
 .nav-link[aria-pressed="true"] { background: rgba(255,255,255,.16); color: #fff; border-color: rgba(255,255,255,.4); }
 .menu-wrap { position: relative; }
+/* In the Header Kit's phone menu a submenu opens in place, under its button: absolute, it sat inside a
+   panel that scrolls and was cut off. */
+.header-overflow-menu .header-menu { position: static; min-width: 0; max-height: none; margin: 2px 0 4px 12px; padding: 4px; box-shadow: none; border-radius: 8px; }
 .header-menu small { display: block; font-size: 12px; opacity: .7; font-weight: 400; }
 .nav-link--badge { position: relative; }
 /* Settings and Help: words, as every other header control and as in Rama. Between 701px and 1199px the
@@ -545,7 +548,10 @@ body.yaml-open .workspace { grid-template-columns: var(--roster-w) minmax(0, 1fr
 }
 .roster-list.drop-target { background: rgba(244,63,94,.08); box-shadow: inset 0 0 0 2px var(--over); }
 .roster-empty { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
-.roster-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; padding-top: var(--space-2); }
+/* The name takes the whole row, Where and Add share the next: three to a row left the name 79px wide
+   in the 252px rail, too narrow for its own placeholder. */
+.roster-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; padding-top: var(--space-2); }
+.roster-add #personName { grid-column: 1 / -1; }
 .roster-input {
   min-width: 0; min-height: var(--control-height-sm); padding: 0 10px;
   background: var(--bg); color: var(--text-primary);
@@ -575,7 +581,7 @@ body.yaml-open .workspace { grid-template-columns: var(--roster-w) minmax(0, 1fr
 .chip-bar i[data-band="ok"] { background: var(--ok); } .chip-bar i[data-band="under"] { background: var(--under); } .chip-bar i[data-band="over"] { background: var(--over); }
 .chip[data-band="over"] .chip-bar { box-shadow: 0 0 0 1px var(--over); }
 .chip-remove {
-  width: 22px; height: 22px; flex-shrink: 0; border: none; background: transparent; color: var(--text-muted);
+  width: 24px; height: 24px; flex-shrink: 0; border: none; background: transparent; color: var(--text-muted);
   font-size: 18px; line-height: 1; cursor: pointer; border-radius: var(--radius-sm); opacity: 0;
   transition: opacity var(--dur), color var(--dur), background var(--dur);
 }

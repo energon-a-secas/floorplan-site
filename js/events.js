@@ -72,7 +72,9 @@ function setupMenu(btnId, menuId, { stayOpen = false } = {}) {
   btn.addEventListener('click', e => {
     e.stopPropagation()
     const open = !menu.classList.contains('open')
-    document.querySelectorAll('.header-menu.open').forEach(m => m.classList.remove('open'))
+    // Every other open menu closes, but not one that holds this button: on a phone the Header Kit's
+    // overflow menu holds Examples and Export, and closing it hid the submenu as it opened.
+    document.querySelectorAll('.header-menu.open').forEach(m => { if (!m.contains(btn)) m.classList.remove('open') })
     menu.classList.toggle('open', open)
     btn.setAttribute('aria-expanded', String(open))
     if (open) menu.querySelector('[role="menuitem"]')?.focus()

@@ -47,6 +47,15 @@ const team = () => W.normalizeWorkspace({
   teams: [{ id: 'payments', name: 'Payments <b>x</b>', members: [{ person: 'ana' }, { person: 'ben', pct: 50 }] }, { id: 'core', name: 'Core', members: [{ person: 'kai' }] }],
 }).ws
 
+// The Add a person input against its own placeholder: the text width (canvas, the input's font) plus padding.
+const addInput = (page) => page.evaluate(() => {
+  const el = document.getElementById('personName'), cs = getComputedStyle(el)
+  const ctx = document.createElement('canvas').getContext('2d')
+  ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+  const need = Math.ceil(ctx.measureText(el.placeholder).width + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight))
+  return { w: Math.round(el.clientWidth), need }
+})
+
 async function launch(eng) {
   if (eng !== 'chromium') return webkit.launch()
   const probe = await chromium.launch({ args: ['--enable-automation'] })
@@ -305,6 +314,22 @@ for (const eng of engines) {
     await pp.evaluate(() => document.getElementById('teamDialog').showModal())
     const dlgTiny = await pp.evaluate(() => [...document.querySelectorAll('#teamDialog button')].map(el => [el.textContent.trim() || el.getAttribute('aria-label'), el.getBoundingClientRect().height]).filter(([, h]) => h < 44))
     check(eng, 'the replace dialog buttons are 44px on touch', dlgTiny.length === 0, JSON.stringify(dlgTiny))
+    await pp.evaluate(() => document.getElementById('teamDialog').close())
+    const addPhone = await addInput(pp)
+    check(eng, 'the Add a person input fits its placeholder at 390', addPhone.w >= addPhone.need, JSON.stringify(addPhone))
+    // Examples is a submenu of the phone menu: it opens in place, under its button, and its rows work.
+    await pp.locator('.header-overflow-toggle').click()
+    await pp.locator('.header-overflow-menu #examplesBtn').click()
+    const sub = await pp.evaluate(() => {
+      const menu = document.getElementById('examplesMenu'), item = menu.querySelector('[data-example="atlas"]')
+      const r = item.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+      return { overflowOpen: document.querySelector('.header-overflow-menu').classList.contains('open'), open: menu.classList.contains('open'), expanded: document.getElementById('examplesBtn').getAttribute('aria-expanded'), hit: !!hit && item.contains(hit), inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth }
+    })
+    check(eng, 'Examples opens from the phone menu, its rows in view and on top', sub.overflowOpen && sub.open && sub.expanded === 'true' && sub.hit && sub.inView, JSON.stringify(sub))
+    await pp.locator('#examplesMenu [data-example="atlas"]').click()
+    await pp.waitForTimeout(400)
+    const after = await pp.evaluate(() => ({ overflow: document.querySelector('.header-overflow-menu').classList.contains('open'), sub: document.getElementById('examplesMenu').classList.contains('open'), groups: document.querySelectorAll('#board .g-name').length }))
+    check(eng, 'an example picked there loads, and both menus close', !after.overflow && !after.sub && after.groups > 0, JSON.stringify(after))
     await phone.close()
 
     // The Building view of the Atlas example (a fresh context: no saved map), as at 1440.
@@ -319,6 +344,10 @@ for (const eng of engines) {
     check(eng, 'no desk name is cut off in the building', clipped.length === 0, JSON.stringify(clipped))
     const plate = await bp.locator('.building .seat--compact[data-person] .seat-name').first().evaluate(e => [e.textContent, e.title])
     check(eng, 'a desk shows the short name, the full one in its title', /^\S+ \S\.$/.test(plate[0]) && plate[1].startsWith(plate[0].slice(0, -2)), JSON.stringify(plate))
+    const addWide = await addInput(bp)
+    check(eng, 'the Add a person input fits its placeholder at 1440', addWide.w >= addWide.need, JSON.stringify(addWide))
+    const removes = await bp.evaluate(() => [...document.querySelectorAll('#rosterList .chip-remove')].map(b => { const r = b.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)] }))
+    check(eng, 'roster remove buttons are at least 24px', removes.length > 0 && removes.every(([w, h]) => w >= 24 && h >= 24), JSON.stringify(removes.slice(0, 3)))
     const tbH = await bp.locator('.board-toolbar').evaluate(e => e.getBoundingClientRect().height)
     check(eng, 'the building toolbar keeps to two rows at 1440', tbH <= 110, String(tbH))
     const covered = await bp.evaluate(() => {
