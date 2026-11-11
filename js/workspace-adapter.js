@@ -11,9 +11,12 @@
 //  Ids: a person or group the workspace already holds goes back under that
 //  id, so a second save adds nobody. One Floorplan made itself goes as
 //  `floorplan-<id>` (the kit README's rule), so two tools' ids never collide.
-//  An id is the workspace's only while the name agrees: a document (a pasted
-//  file, a `#d=` link) whose `maya` is someone else goes under an id of its
-//  own, since the merge takes a carried id as the person and would rename them.
+//  An id is the workspace's when this document took it from the workspace
+//  ("Use my team": model.wsFrom, from loadedFrom()), so a name fixed in
+//  Floorplan renames them; otherwise only while the name agrees. A document
+//  (a pasted file, a `#d=` link) whose `maya` is someone else goes under an id
+//  of its own, since the merge takes a carried id as the person and would
+//  rename them.
 //  Every value leaves through the kit's validators; the page normalizes the
 //  payload again anyway, since a link is untrusted wherever it came from.
 //
@@ -58,6 +61,22 @@ export function teamToDoc(ws, { title = TEAM_TITLE } = {}) {
   return { title, people, groups }
 }
 
+/**
+ * The ids a document built by teamToDoc took from the workspace. workspace-link.js
+ * keeps it on the model as `wsFrom` (local to this browser: never in the YAML, a
+ * link or an export), and docToPayload sends those ids back even after a rename.
+ */
+export function loadedFrom(ws) {
+  const { ws: clean } = W.normalizeWorkspace(ws)
+  return { people: clean.people.map(p => p.id), teams: clean.teams.map(t => t.id) }
+}
+
+// model.wsFrom, checked: anything that is not a list of kit ids counts for nothing.
+function fromSet(from, key) {
+  const list = W.isMap(from) && Array.isArray(from[key]) ? from[key] : []
+  return new Set(list.filter(id => typeof id === 'string' && W.isId(id)))
+}
+
 /** True when the document holds nothing a "Use my team" would throw away. */
 export function isBlank(model) {
   return !Object.keys(model.people || {}).length && !Object.keys(model.groups || {}).length
@@ -70,18 +89,30 @@ function sameName(a, b) {
   return fa || fb ? fa === fb : W.str(a, NAME_MAX) === W.str(b, NAME_MAX)
 }
 
-// The id to send. `known` maps the ids the workspace holds to their names. The
-// workspace's own id when it holds one under this name; else Floorplan's,
-// prefixed; and when that prefixed id is held by someone else too, one with a
-// hash of the name on the end. Past 48 characters the tail becomes a hash of
-// the whole id, so two long ids that differ only at the end stay two people.
-function idFor(id, name, known) {
+// The id to send. `known` maps the ids the workspace holds to their names,
+// `from` holds the ids this document took from the workspace, `used` the ids
+// this payload has given out already. The workspace's own id when the document
+// took it from there, or when the workspace holds it under this name; else
+// Floorplan's, prefixed; and when that prefixed id is held by someone else too,
+// one with a hash of the source id and the name on the end, so two document
+// people never share one. Past 48 characters the tail becomes a hash of the
+// whole id, so two long ids that differ only at the end stay two people.
+function idFor(id, name, known, from, used) {
   const own = W.slug(id)
-  const free = (x) => !known.has(x) || sameName(known.get(x), name)
-  if (own && known.has(own) && free(own)) return own
-  const full = fit(own.startsWith(PREFIX) ? own : PREFIX + own, own)   // both parts are slugs already
-  if (free(full)) return full
-  return fit(full + '-' + W.hashString(W.foldName(name) || W.str(name, NAME_MAX)).toString(36), own + '\n' + name)
+  const free = (x) => !used.has(x) && (!known.has(x) || sameName(known.get(x), name))
+  let out
+  if (own && known.has(own) && !used.has(own) && (from.has(own) || sameName(known.get(own), name))) out = own
+  else {
+    const full = fit(own.startsWith(PREFIX) ? own : PREFIX + own, own)   // both parts are slugs already
+    if (free(full)) out = full
+    else {
+      const seed = own + '\n' + (W.foldName(name) || W.str(name, NAME_MAX))
+      out = fit(full + '-' + W.hashString(seed).toString(36), seed)
+      for (let n = 2; !free(out); n++) out = fit(full + '-' + W.hashString(seed + '\n' + n).toString(36), seed + '\n' + n)
+    }
+  }
+  used.add(out)
+  return out
 }
 
 function fit(id, seed) {
@@ -115,12 +146,14 @@ export function docToPayload(model, ws = null) {
   const storedTeams = new Map(stored ? stored.teams.map(t => [t.id, t]) : [])
   const peopleIds = new Map([...storedPeople].map(([id, p]) => [id, p.name]))
   const teamIds = new Map([...storedTeams].map(([id, t]) => [id, t.name]))
+  const fromPeople = fromSet(model.wsFrom, 'people'), fromTeams = fromSet(model.wsFrom, 'teams')
+  const usedPeople = new Set(), usedTeams = new Set()
   const ids = new Map()
   const people = []
   for (const p of Object.values(model.people || {})) {
     const name = W.str(p.name, 120)
     if (!W.visible(name)) continue
-    const id = idFor(p.id, name, peopleIds)
+    const id = idFor(p.id, name, peopleIds, fromPeople, usedPeople)
     ids.set(p.id, id)
     const out = { id, name }
     const title = W.str(p.role, 120); if (title) out.title = title
@@ -138,7 +171,7 @@ export function docToPayload(model, ws = null) {
   for (const g of groups) {
     const name = W.str(g.name, 120)
     if (!W.visible(name)) continue
-    const out = { id: idFor(g.id, name, teamIds), name }
+    const out = { id: idFor(g.id, name, teamIds, fromTeams, usedTeams), name }
     const was = storedTeams.get(out.id)
     const color = W.color(g.color)
     if (color && !(was && !was.color && color === W.color(filledColor(model, g, tops)))) out.color = color

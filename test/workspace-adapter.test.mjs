@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import * as W from '../js/neorgon-workspace-core.js'
 import { normalizeDoc } from '../js/schema.js'
-import { teamToDoc, docToPayload, isBlank, coreFromPrefs, faceOf, PREFIX } from '../js/workspace-adapter.js'
+import { teamToDoc, docToPayload, isBlank, coreFromPrefs, faceOf, PREFIX, loadedFrom } from '../js/workspace-adapter.js'
 import { coreOverlap, setCoreHours, coreHours } from '../js/timezones.js'
 
 const sample = () => W.normalizeWorkspace({
@@ -201,4 +201,52 @@ test('a 40-character tag whose lowercase is longer round-trips unchanged', () =>
   // one tag dropped in Floorplan: the other keeps its spelling, the long one too
   model.people.ana.tags = model.people.ana.tags.filter(t => t !== 'go')
   assert.deepEqual(docToPayload(model, ws).people[0].tags, [tag])
+})
+
+test('a person or team renamed after "Use my team" is renamed in the workspace, not added again', () => {
+  const ws = W.normalizeWorkspace({
+    v: 1,
+    people: [{ id: 'maya', name: 'Maya Ortiz', tags: ['Ops'] }, { id: 'li', name: 'Li' }],
+    teams: [{ id: 'core', name: 'Core', members: [{ person: 'maya' }, { person: 'li' }] }],
+  }).ws
+  const { model } = normalizeDoc(teamToDoc(ws))
+  model.wsFrom = loadedFrom(ws)   // what workspace-link.js apply() records
+  model.people.maya.name = 'Maya Ortiz-Diaz'
+  model.groups.core.name = 'Core Platform'
+  const payload = docToPayload(model, ws)
+  assert.deepEqual(payload.people.map(p => p.id), ['maya', 'li'])
+  assert.deepEqual(payload.people[0].tags, ['Ops'])
+  assert.deepEqual(payload.teams.map(t => t.id), ['core'])
+  assert.deepEqual(payload.teams[0].members.map(m => m.person), ['maya', 'li'])
+  const merged = W.previewMerge(ws, payload)
+  assert.deepEqual(merged.added, [])
+  assert.deepEqual(merged.teams.added, [])
+  assert.deepEqual(merged.updated.map(u => u.id), ['maya'])
+  assert.equal(merged.next.people.find(p => p.id === 'maya').name, 'Maya Ortiz-Diaz')
+  assert.equal(merged.next.teams.find(t => t.id === 'core').name, 'Core Platform')
+  // the same document without the record (a pasted copy of it) is someone else
+  delete model.wsFrom
+  assert.equal(docToPayload(model, ws).people[0].id, 'floorplan-maya')
+  // a record that is not a list of ids counts for nothing
+  model.wsFrom = { people: 'maya', teams: [42, '<x>'] }
+  assert.equal(docToPayload(model, ws).people[0].id, 'floorplan-maya')
+  assert.equal(docToPayload(model, ws).teams[0].id, 'floorplan-core')
+})
+
+test('two document people never share one outgoing id', () => {
+  const ws = W.normalizeWorkspace({ v: 1, people: [{ id: 'x', name: 'A' }, { id: 'floorplan-x', name: 'B' }], teams: [] }).ws
+  const { model } = normalizeDoc({ people: [{ id: 'x', name: 'Zed' }, { id: 'floorplan-x', name: 'Zed' }], groups: [{ name: 'G', members: ['x', 'floorplan-x'] }] })
+  const payload = docToPayload(model, ws)
+  const ids = payload.people.map(p => p.id)
+  assert.equal(new Set(ids).size, 2, ids.join())
+  assert.ok(!ids.includes('x') && !ids.includes('floorplan-x'), ids.join())
+  const merged = W.previewMerge(ws, payload)
+  assert.equal(merged.added.length, 2)
+  const again = W.previewMerge(merged.next, docToPayload(model, merged.next))
+  assert.deepEqual(again.added, [])
+  // a renamed document person whose prefixed id is another document person's
+  const ws2 = W.normalizeWorkspace({ v: 1, people: [{ id: 'maya', name: 'Maya' }], teams: [] }).ws
+  const doc2 = normalizeDoc({ people: [{ id: 'maya', name: 'Bob' }, { id: 'floorplan-maya', name: 'Bob' }], groups: [] }).model
+  const ids2 = docToPayload(doc2, ws2).people.map(p => p.id)
+  assert.equal(new Set(ids2).size, 2, ids2.join())
 })

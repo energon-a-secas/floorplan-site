@@ -23,7 +23,7 @@ import { normalizeDoc } from './schema.js'
 import { afterChange, renderBoard, renderRoster, renderInsights, renderDetail } from './render.js'
 import { showToast, $ } from './utils.js'
 import { setCoreHours, coreLabel } from './timezones.js'
-import { teamToDoc, docToPayload, isBlank, coreFromPrefs } from './workspace-adapter.js'
+import { teamToDoc, docToPayload, isBlank, coreFromPrefs, loadedFrom } from './workspace-adapter.js'
 import { readMe } from './neorgon-workspace-core.js'
 
 const TOUR_KEY = 'floorplan-tour-v1'
@@ -160,6 +160,7 @@ export function confirmTeam() {
 
 function apply(workspace) {
   const { model, errors } = normalizeDoc(teamToDoc(workspace))
+  model.wsFrom = loadedFrom(workspace)   // a name fixed here renames them on the next save
   snapshot()
   resetTo(model)
   ui.selection = null; ui.picked = null; ui.errors = errors; ui.warnings = []

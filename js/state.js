@@ -17,6 +17,12 @@ import { debounce, slug, colorAt, isHex } from './utils.js'
 export const STORAGE_KEY = 'floorplan-v1'
 
 export const state = emptyModel()
+// The ids the document took from the Neorgon Workspace ("Use my team"), or null.
+// Local to this browser: saved beside the document, never inside it, so YAML,
+// links and exports do not carry it, and any other document replacing the board
+// clears it. workspace-adapter.js docToPayload reads it. Undo brings it back
+// with the document it belonged to; a version or the puzzle (same document) keeps it.
+state.wsFrom = null
 
 // Transient UI state; never saved, never in a snapshot.
 export const ui = {
@@ -54,6 +60,7 @@ export function resetTo(model, { keepHistory = false } = {}) {
   state.groups = model.groups
   state.links = model.links
   if (!keepHistory) state.history = Array.isArray(model.history) ? model.history : []
+  if (!keepHistory || model.wsFrom !== undefined) state.wsFrom = model.wsFrom || null
 }
 export function clearAll() { resetTo(emptyModel()) }
 
@@ -213,7 +220,7 @@ export function removeLink(id) { state.links = state.links.filter(l => l.id !== 
 export function saveState() {
   if (ui.embed || ui.preview) return   // an embedded copy, or a snapshot on screen, never overwrites the working document
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, doc: modelToDoc(state).doc, savedAt: Date.now() }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ v: 1, doc: modelToDoc(state).doc, savedAt: Date.now(), ...(state.wsFrom ? { wsFrom: state.wsFrom } : {}) }))
   } catch { /* quota or private mode: the session still works */ }
 }
 export const debouncedSave = debounce(saveState, 300)
@@ -227,6 +234,7 @@ export function loadSaved() {
     const doc = data?.doc ?? data
     const { model, errors } = normalizeDoc(doc)
     if (errors.length) ui.warnings = errors
+    model.wsFrom = data?.doc ? data.wsFrom || null : null   // checked where it is read (workspace-adapter.js)
     resetTo(model)
     return Object.keys(model.people).length + Object.keys(model.groups).length > 0
   } catch { return false }
@@ -235,7 +243,7 @@ export function loadSaved() {
 // ── Undo / redo ──────────────────────────────────────────────
 const past = [], future = []
 const MAX_HISTORY = 40
-const pack = () => JSON.stringify({ meta: state.meta, profiles: state.profiles, people: state.people, groups: state.groups, links: state.links, history: state.history })
+const pack = () => JSON.stringify({ meta: state.meta, profiles: state.profiles, people: state.people, groups: state.groups, links: state.links, history: state.history, wsFrom: state.wsFrom })
 
 export function snapshot() {
   past.push(pack())
