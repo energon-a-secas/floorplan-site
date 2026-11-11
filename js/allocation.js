@@ -5,7 +5,7 @@
 
 import { state, allGroups, childrenOf, descendantsOf } from './state.js'
 import { fmtFte, plural } from './utils.js'
-import { coreOverlap } from './timezones.js'
+import { coreOverlap, coreLabel } from './timezones.js'
 
 /** personId -> { total, count, parts: [{ group, pct }] } */
 export function personTotals() {
@@ -99,7 +99,7 @@ export function computeInsights(layout = null) {
     if (ov.hours === null) continue
     if (ov.hours < 3) {
       const zones = [...new Set(ov.known.map(k => k.label.split('/').pop().replace(/_/g, ' ')))]
-      items.push({ kind: 'timezones', severity: ov.hours < 1 ? 'high' : 'medium', title: `${g.name} shares ${ov.hours === 0 ? 'no' : ov.hours} core hour${ov.hours === 1 ? '' : 's'}`, detail: `${ov.known.length} people across ${zones.length} zones (${zones.slice(0, 4).join(', ')}${zones.length > 4 ? '…' : ''}). Working days of 09:00 to 17:00 local barely meet; plan async or shift one end.`, ref: { type: 'group', id: g.id } })
+      items.push({ kind: 'timezones', severity: ov.hours < 1 ? 'high' : 'medium', title: `${g.name} shares ${ov.hours === 0 ? 'no' : ov.hours} core hour${ov.hours === 1 ? '' : 's'}`, detail: `${ov.known.length} people across ${zones.length} zones (${zones.slice(0, 4).join(', ')}${zones.length > 4 ? '…' : ''}). Working days of ${coreLabel()} local barely meet; plan async or shift one end.`, ref: { type: 'group', id: g.id } })
     }
   }
 

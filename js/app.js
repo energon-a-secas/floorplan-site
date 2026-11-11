@@ -5,6 +5,7 @@ import { state, ui, loadSaved, setMode } from './state.js'
 import { render } from './render.js'
 import { bindEvents, loadExample } from './events.js'
 import { loadFromUrl } from './export.js'
+import { startWorkspace, mountWorkspaceGear } from './workspace-link.js'
 
 // ?embed=1 hides the chrome and never writes localStorage (iframes);
 // ?readonly=1 blocks edits; ?mode=diagram|building overrides the document; ?fit=1 scales the building to fit;
@@ -26,6 +27,7 @@ function readParams() {
 
 function init() {
   const q = readParams()
+  startWorkspace()   // before any hash is read: a team answer (#neo-ws=) is taken and stripped here
   bindEvents()
   if (!loadFromUrl()) {
     const restored = ui.embed ? false : loadSaved()   // an embed shows the URL's document or the example, never the visitor's own
@@ -35,6 +37,7 @@ function init() {
   if (mode === 'diagram' || mode === 'building') setMode(mode)
   else if (ui.simStart !== null && state.meta.mode !== 'building') setMode('building')   // a sim needs the office
   render()
+  mountWorkspaceGear()
   if (ui.simStart !== null && state.meta.mode === 'building') import('./sim.js').then(m => m.startSim({ event: ui.simStart }))
   // A #d= link pasted over an open tab is a fragment change, not a load.
   window.addEventListener('hashchange', () => { if (location.hash.startsWith('#d=')) loadFromUrl() })

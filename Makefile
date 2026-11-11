@@ -8,7 +8,8 @@ help:
 	@echo ""
 	@echo "  make serve    Start dev server → http://localhost:$(PORT)"
 	@echo "  make kill     Kill this project's HTTP server"
-	@echo "  make test     Run the Node tests (presence core)"
+	@echo "  make test     Run the Node tests (presence core, workspace adapter)"
+	@echo "  make test-browser  Playwright check of the Workspace adoption (ports 9352, 9353)"
 	@echo "  make install  npm install (Convex CLI for the presence backend)"
 	@echo "  make convex   Run Convex dev (deploys functions + watches)"
 	@echo "  make deploy   Deploy Convex functions to production"
@@ -30,6 +31,10 @@ kill:
 .PHONY: test
 test:
 	node --test "test/*.test.mjs"
+
+.PHONY: test-browser
+test-browser:
+	node test/workspace-browser.mjs
 
 # ── Convex (Visit-mode presence backend; optional) ────────────────────────────
 .PHONY: install

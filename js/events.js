@@ -148,6 +148,8 @@ function runAction(action, el, e) {
     case 'clear-layout': snapshot(); setLayout(id, null); afterChange(); break
     case 'relayout': snapshot(); clearLayouts(); afterChange(); showToast('Layout cleared; rooms packed automatically'); break
     case 'load-example': loadExample(id); break
+    case 'use-team': import('./workspace-link.js').then(m => m.useTeamFromPage()); break
+    case 'team-replace': import('./workspace-link.js').then(m => m.confirmTeam()); break
     case 'focus-ref': focusRef(el.dataset.type, el.dataset.id); break
     case 'toggle-insights': ui.drawerOpen = !ui.drawerOpen; document.body.classList.toggle('drawer-open', ui.drawerOpen); break
     case 'close-insights': ui.drawerOpen = false; document.body.classList.remove('drawer-open'); break

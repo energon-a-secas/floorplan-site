@@ -10,8 +10,10 @@
        connect-src carries https: only because ?src= fetches a document from any https host that
        allows CORS (llms.txt); the hosts named before it are everything else the page talks to.
        https: also matches wss: on any host and reaches clerk.neorgon.com; an allowlist for ?src=
-       is what would let it go (CLAUDE.md, Gotchas). -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-na6phygP/tfoCIp4oBeQgGJJpQsZob/udrLum+20QTI=' https://cdn.jsdelivr.net/npm/js-yaml@4.3.2/dist/js-yaml.min.js https://esm.sh/convex@1.21.0/ https://esm.sh/jwt-decode@%5E3.1.2 https://esm.sh/jwt-decode@3.1.2/ https://gc.zgo.at/count.v5.js https://static.cloudflareinsights.com/beacon.min.js; style-src 'self' 'unsafe-inline' https://cdn.neorgon.org/v1.0.0/ https://fonts.googleapis.com/css2; img-src 'self' data: https://cdn.neorgon.org/v1.0.0/ https://neorgon.goatcounter.com/count; font-src https://fonts.gstatic.com/s/silkscreen/; connect-src 'self' https://adjoining-crane-592.convex.cloud/api/ https://neorgon.goatcounter.com/count https://cloudflareinsights.com https:; manifest-src 'self'; media-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+       is what would let it go (CLAUDE.md, Gotchas).
+       frame-src: the Neorgon Workspace's read-only frame (neorgon.com/workspace/vault.html), and any
+       localhost port in development, where neo-ws:dev-origin may point the client at another server. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-na6phygP/tfoCIp4oBeQgGJJpQsZob/udrLum+20QTI=' https://cdn.jsdelivr.net/npm/js-yaml@4.3.2/dist/js-yaml.min.js https://esm.sh/convex@1.21.0/ https://esm.sh/jwt-decode@%5E3.1.2 https://esm.sh/jwt-decode@3.1.2/ https://gc.zgo.at/count.v5.js https://static.cloudflareinsights.com/beacon.min.js; style-src 'self' 'unsafe-inline' https://cdn.neorgon.org/v1.0.0/ https://fonts.googleapis.com/css2; img-src 'self' data: https://cdn.neorgon.org/v1.0.0/ https://neorgon.goatcounter.com/count; font-src https://fonts.gstatic.com/s/silkscreen/; connect-src 'self' https://adjoining-crane-592.convex.cloud/api/ https://neorgon.goatcounter.com/count https://cloudflareinsights.com https:; manifest-src 'self'; media-src 'none'; frame-src https://neorgon.com http://localhost:*; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
@@ -47,6 +49,8 @@
   <link rel="stylesheet" href="css/diagram.css">
   <link rel="stylesheet" href="css/building.css">
   <link rel="stylesheet" href="css/sim.css">
+  <!-- Neorgon Workspace Kit (vendored): the Settings sheet behind the header gear and the , key. -->
+  <link rel="stylesheet" href="css/neorgon-workspace.css">
   <!-- Neorgon Header Kit (vendored; ?header=live swaps CSS to CDN). Keep after style.css: the kit owns the header. -->
   <script>(function(){var m=location.search.match(/[?&]theme=([\w-]+)/)||document.cookie.match(/(?:^|;\s*)neo_theme=([\w-]+)/);if(m&&m[1]!=='default')document.documentElement.dataset.theme=decodeURIComponent(m[1]);})();</script>
   <link rel="stylesheet" href="css/neorgon-header.css">
@@ -93,7 +97,7 @@
         </div>
         <button type="button" class="nav-link" id="yamlToggle" data-action="toggle-yaml" aria-pressed="false">YAML</button>
         <div class="menu-wrap">
-          <button type="button" class="nav-link" id="examplesBtn" aria-haspopup="menu" aria-expanded="false">Examples ▾</button>
+          <button type="button" class="nav-link" id="examplesBtn" aria-haspopup="menu" aria-expanded="false">Examples <svg class="i-chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="header-menu" id="examplesMenu" role="menu">
             <button type="button" role="menuitem" data-example="atlas">Atlas Program <small>nested team chart</small></button>
             <button type="button" role="menuitem" data-example="revenue">Revenue Platform <small>office with rooms and bands</small></button>
@@ -102,7 +106,7 @@
           </div>
         </div>
         <div class="menu-wrap">
-          <button type="button" class="nav-link" id="exportBtn" aria-haspopup="menu" aria-expanded="false">Export ▾</button>
+          <button type="button" class="nav-link" id="exportBtn" aria-haspopup="menu" aria-expanded="false">Export <svg class="i-chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="header-menu" id="exportMenu" role="menu">
             <button type="button" role="menuitem" data-export="yaml">Download YAML</button>
             <button type="button" role="menuitem" data-export="json">Download JSON</button>
@@ -152,11 +156,12 @@
       <section class="board-wrap" id="boardWrap" aria-label="Board">
         <div class="board-toolbar" id="boardToolbar">
           <input type="text" id="docTitle" class="doc-title" placeholder="Untitled map" maxlength="80" aria-label="Document title">
-          <div class="toolbar">
-            <button type="button" class="btn btn--secondary btn--sm" data-action="add-group">+ Group</button>
+          <div class="toolbar toolbar--grouped">
+            <div class="tool-group" role="group" aria-label="Build">
+              <button type="button" class="btn btn--secondary btn--sm" data-action="add-group">+ Group</button>
             <button type="button" class="btn btn--secondary btn--sm" data-action="add-band" title="A strip that spans several groups: QA pool, on-call, shared efforts">+ Shared space</button>
             <div class="menu-wrap">
-              <button type="button" class="btn btn--ghost btn--sm" id="templatesBtn" aria-haspopup="menu" aria-expanded="false" title="Start a group from a shape">Templates ▾</button>
+              <button type="button" class="btn btn--ghost btn--sm" id="templatesBtn" aria-haspopup="menu" aria-expanded="false" title="Start a group from a shape">Templates <svg class="i-chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <div class="header-menu" id="templatesMenu" role="menu" aria-label="Group templates">
                 <button type="button" role="menuitem" data-template="squad">Squad <small>6 seats, owns one area</small></button>
                 <button type="button" role="menuitem" data-template="pod">Pod: Back End + Front End <small>a team with two sub-groups</small></button>
@@ -167,13 +172,15 @@
                 <button type="button" role="menuitem" data-template="support">Support desk <small>shared band, 3 seats</small></button>
               </div>
             </div>
-            <span class="toolbar-sep" aria-hidden="true"></span>
-            <button type="button" class="btn btn--ghost btn--sm btn--icon" id="undoBtn" data-action="undo" aria-label="Undo" title="Undo (Cmd/Ctrl+Z)">↶</button>
-            <button type="button" class="btn btn--ghost btn--sm btn--icon" id="redoBtn" data-action="redo" aria-label="Redo" title="Redo (Shift+Cmd/Ctrl+Z)">↷</button>
+            </div>
+            <div class="tool-group" role="group" aria-label="History">
+              <button type="button" class="btn btn--ghost btn--sm btn--icon" id="undoBtn" data-action="undo" aria-label="Undo" title="Undo (Cmd/Ctrl+Z)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+            <button type="button" class="btn btn--ghost btn--sm btn--icon" id="redoBtn" data-action="redo" aria-label="Redo" title="Redo (Shift+Cmd/Ctrl+Z)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
             <button type="button" class="btn btn--ghost btn--sm btn--versions" id="versionsBtn" data-action="toggle-versions" aria-pressed="false" title="Dated snapshots of this document: preview, restore, compare">Versions <span class="mini-badge" id="versionsCount" hidden>0</span></button>
-            <button type="button" class="btn btn--ghost btn--sm btn--puzzle" id="puzzleBtn" data-action="puzzle" aria-pressed="false" title="The reorg puzzle: the map gets scrambled, put everyone back in the fewest moves">Puzzle</button>
-            <div class="menu-wrap">
-              <button type="button" class="btn btn--ghost btn--sm" id="displayBtn" aria-haspopup="menu" aria-expanded="false" title="How seats are drawn: alignment, shares, open seats, avatars, order">Display ▾</button>
+            </div>
+            <div class="tool-group" role="group" aria-label="View">
+              <div class="menu-wrap">
+              <button type="button" class="btn btn--ghost btn--sm" id="displayBtn" aria-haspopup="menu" aria-expanded="false" title="How seats are drawn: alignment, shares, open seats, avatars, order">Display <svg class="i-chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               <div class="header-menu display-menu" id="displayMenu" role="menu" aria-label="Display options">
                 <fieldset><legend>Seats in a box</legend>
                   <label><input type="radio" name="align" value="start"> Align to the start</label>
@@ -208,9 +215,15 @@
               <button type="button" class="btn btn--ghost btn--sm" id="fitBtn" data-action="fit" aria-pressed="false" title="Scale the building to the board width">Fit</button>
               <button type="button" class="btn btn--ghost btn--sm" data-action="relayout" title="Clear every room's saved position and let the packer place them">Auto layout</button>
             </span>
-            <button type="button" class="btn btn--ghost btn--sm btn--visit" id="visitBtn" data-action="visit" aria-pressed="false" title="Walk the office with WASD or the arrows (opens the Building view)">Visit</button>
+            </div>
+            <div class="tool-group" role="group" aria-label="Play">
+              <button type="button" class="btn btn--ghost btn--sm btn--visit" id="visitBtn" data-action="visit" aria-pressed="false" title="Walk the office with WASD or the arrows (opens the Building view)">Visit</button>
             <button type="button" class="btn btn--ghost btn--sm btn--sim" id="simBtn" data-action="sim" aria-pressed="false" title="Bring the office to life: people work, chat, take breaks; stir it with a party, an earthquake or an outage (opens the Building view)">Sim</button>
-            <button type="button" class="btn btn--ghost btn--sm btn--clear" data-action="clear" title="Clear the board (undoable)">Clear</button>
+              <button type="button" class="btn btn--ghost btn--sm btn--puzzle" id="puzzleBtn" data-action="puzzle" aria-pressed="false" title="The reorg puzzle: the map gets scrambled, put everyone back in the fewest moves">Puzzle</button>
+            </div>
+            <div class="tool-group tool-group--end">
+              <button type="button" class="btn btn--ghost btn--sm btn--clear" data-action="clear" title="Clear the board (undoable)">Clear</button>
+            </div>
           </div>
         </div>
         <div class="versions-bar" id="versionsBar" hidden></div>
@@ -292,7 +305,7 @@
   <div class="drawer-scrim" id="drawerScrim" data-action="close-insights"></div>
 
   <dialog class="fp-dialog" id="importDialog" aria-labelledby="importTitle">
-    <header class="modal__header"><h2 id="importTitle">Import</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close">×</button></header>
+    <header class="modal__header"><h2 id="importTitle">Import</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
     <div class="modal__body">
       <p>Paste <strong>YAML</strong>, <strong>JSON</strong>, a <strong>markdown outline</strong> (<code>## Group</code>, <code>### Sub-group</code>, <code>- Name (50%) @Location</code>), or <strong>CSV</strong> with a header row (<code>name, team, sub, location, role, pct, tz, tags</code>). The format is detected. Or pick a file.</p>
       <textarea id="importText" class="yaml-text yaml-text--import" rows="12" spellcheck="false" placeholder="## Platform&#10;- Maya K @Chile&#10;- Leon V (50%)&#10;### Back End&#10;- Aiko T @Japan"></textarea>
@@ -305,8 +318,17 @@
     </footer>
   </dialog>
 
+  <dialog class="fp-dialog" id="teamDialog" aria-labelledby="teamDialogTitle" aria-describedby="teamDialogText">
+    <header class="modal__header"><h2 id="teamDialogTitle">Replace the map with your team?</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
+    <div class="modal__body"><p id="teamDialogText">Your team replaces the map on the board. Undo (Cmd/Ctrl+Z) brings the current map back.</p></div>
+    <footer class="modal__footer">
+      <button type="button" class="btn btn--ghost" data-action="dialog-close">Keep this map</button>
+      <button type="button" class="btn btn--primary" data-action="team-replace">Replace with my team</button>
+    </footer>
+  </dialog>
+
   <dialog class="fp-dialog" id="helpDialog" aria-labelledby="helpTitle">
-    <header class="modal__header"><h2 id="helpTitle">Floorplan in a minute</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close">×</button></header>
+    <header class="modal__header"><h2 id="helpTitle">Floorplan in a minute</h2><button type="button" class="btn btn--ghost btn--icon" data-action="dialog-close" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
     <div class="modal__body help-body">
       <h3>Getting around</h3>
       <p><strong>People</strong> live in the left rail: add a name there and drag it onto the board. The <strong>board</strong> in the middle is the map itself; the buttons at the top left switch it between <strong>Diagram</strong> (plain nested boxes) and <strong>Building</strong> (the pixel office). <strong>YAML</strong> opens the same document as text on the right. <strong>Insights</strong> (top right) flags what a manager should notice, and the toolbar above the board holds groups, templates, undo, versions and display options.</p>
@@ -320,7 +342,7 @@
       <p><strong>Diagram</strong> is the nested-box chart. <strong>Building</strong> is the office: rooms on a grid, doors where linked rooms touch, corridors where they do not. Drag a room by its grip, resize from the corner.</p>
       <h3>Visit and Sim</h3>
       <p><strong>Visit</strong> lets you walk the office with WASD or the arrows. <strong>Sim</strong> brings it to life: everyone walks in, works, fetches coffee in a shared space, chats, holds team syncs; a split person hops between desks. Click a character, then a colleague to make them talk or the floor to send them there. Both open the Building view on their own.</p>
-      <p>The clock dims people outside their 09:00 to 17:00 local: scrub it, jump to <em>Peak</em> (the fullest hour) or <em>Play day</em> to watch the office hand over from zone to zone; everyone takes lunch around noon local. Energy and company drift while people work and weight what they do next (hover a character to see them).</p>
+      <p>The clock dims people outside their core hours (your working hours in Settings, 09:00 to 17:00 local until you change them): scrub it, jump to <em>Peak</em> (the fullest hour) or <em>Play day</em> to watch the office hand over from zone to zone; everyone takes lunch around noon local. Energy and company drift while people work and weight what they do next (hover a character to see them).</p>
       <p>Stir the floor with a party, a coffee break, an earthquake, an outage (the responders are the room that owns it plus every shared space that spans it), a fire drill, a visitor tour (a guest walks every room and the people there greet them) or a demo day (everyone gathers in the biggest room, one person presents). Drop someone from the roster onto a room while the sim runs and they walk from where they landed to a desk. Nothing from the sim lands in the document.</p>
       <h3>Puzzle</h3>
       <p><strong>Puzzle</strong> scrambles the map and asks you to put everyone back in the fewest moves: the board marks who moved and the Changes tab lists it; Hint flashes one wrong seat; Give up restores the map. Undo is off while it runs. Best scores stay in this browser per document title. Turn Sim on first and the people walk as you fix it.</p>
@@ -328,6 +350,8 @@
       <p>Give people <em>tags</em> and groups <em>needs</em>; Insights flags a group missing a skill. Locations (or a <em>time zone</em>) feed a core-hours strip in the group sheet and an Insight when a team shares fewer than three hours. <strong>Templates</strong> start a squad, a pod, a platform team or a shared rotation in one click; <strong>CSV</strong> pastes straight in.</p>
       <h3>Display</h3>
       <p>Per document: center seats in their box, show shares as bars, badges only or hide them, let a cat or a dog keep an open seat, pixel sprites or initials, order seats by name or share, hide locations. Each person's avatar has presets (glasses, cap, headset, laptop, coffee, top hat, cat, dog, robot) and fields to customise; everything lands in the YAML.</p>
+      <h3>Settings and your team</h3>
+      <p>The gear in the header (or <kbd>,</kbd>) opens Settings: your time zone and working hours, which Floorplan uses as core hours, and your team from the Neorgon Workspace. <strong>Use my team in Floorplan</strong> builds a map from your workspace's people and teams (it asks before replacing the map on the board); <strong>Save these people to your workspace</strong> sends this map's people and groups to the workspace page, which shows you what changes before anything is saved. All of it stays in your browser.</p>
       <h3>Versions</h3>
       <p>Snapshot the document before a change (it is stored inside the YAML as <code>history:</code>, so it travels with links and exports). Scrub through snapshots, restore one, or <strong>compare now</strong> with a snapshot or a pasted document: the board marks who moved, joined, left, and whose share changed; the Changes tab lists it all.</p>
       <h3>YAML</h3>
@@ -342,12 +366,13 @@
         <dt><kbd>W A S D</kbd> / arrows</dt><dd>walk, in Visit mode</dd>
         <dt>click, click</dt><dd>in Sim mode: a character, then a colleague (they talk) or the floor (they walk there); <kbd>Enter</kbd> on a focused character does the same; <kbd>Esc</kbd> clears the pick</dd>
         <dt><kbd>?</kbd></dt><dd>this card</dd>
+        <dt><kbd>,</kbd></dt><dd>Settings: you, your team, and Floorplan's own preferences</dd>
       </dl>
     </div>
     <footer class="modal__footer"><button type="button" class="btn btn--primary" data-action="dialog-close">Got it</button></footer>
   </dialog>
 
-  <a class="embed-link" id="embedLink" href="./" target="_blank" rel="noopener" hidden>Open in Floorplan ↗</a>
+  <a class="embed-link" id="embedLink" href="./" target="_blank" rel="noopener" hidden>Open in Floorplan <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M4.5 2.5h5v5M9.5 2.5 3 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
 
   <footer class="neo-footer" data-footer-mode="app">
     Everything stays in your browser: the document lives in localStorage and in the links you choose to share.

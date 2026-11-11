@@ -15,7 +15,7 @@ import { getLayout, renderToolbar } from './render.js'
 import { passableGrid } from './layout.js'
 import { $, showToast, escHtml } from './utils.js'
 import { avatarSpec, spriteDataUrl, loadPixelFont } from './avatar.js'
-import { zoneFor } from './timezones.js'
+import { zoneFor, inCore } from './timezones.js'
 import { findPath, cellOf } from './path.js'
 import { decide, setOut, chatWith, triggerEvent, endEvent, EVENTS, onLayer } from './sim-brain.js'
 
@@ -252,7 +252,7 @@ export function hourUtc() {
 export function inHours(a, h = hourUtc()) {
   if (a.offset === null || a.offset === undefined) return true
   const local = (((h + a.offset) % 24) + 24) % 24
-  return local >= 9 && local < 17
+  return inCore(local)
 }
 /** The UTC half-hour with the most people inside their core hours. */
 export function peakHour() {

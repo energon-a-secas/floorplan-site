@@ -3,7 +3,8 @@
 //  group shares. A person's zone comes from `tz:` (an IANA name or a
 //  numeric offset) or, failing that, from the words in `location:` via a
 //  small table of countries and cities. Offsets are computed with Intl so
-//  daylight saving is right for today. Core hours are 09:00 to 17:00 local.
+//  daylight saving is right for today. Core hours are the visitor's working
+//  hours from the Workspace settings (neo_me), 09:00 to 17:00 local until set.
 // ════════════════════════════════════════════════════════════
 
 const ZONES = {
@@ -64,9 +65,25 @@ export function zoneFor(person) {
   return null
 }
 
+// The visitor's core window, in hours from local midnight. Set from the
+// Workspace settings by workspace-link.js; read by the overlap check and Sim.
+const core = { start: 9, end: 17 }
+export function setCoreHours(h) {
+  const start = Number(h?.start), end = Number(h?.end)
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > 24 || start >= end) return false
+  core.start = start; core.end = end
+  return true
+}
+export const coreHours = () => ({ start: core.start, end: core.end })
+const hhmm = h => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.round((h % 1) * 60)).padStart(2, '0')}`
+/** "09:00 to 17:00" for the current window. */
+export const coreLabel = () => `${hhmm(core.start)} to ${hhmm(core.end)}`
+/** Is a local hour (0..24) inside the core window? */
+export const inCore = local => local >= core.start && local < core.end
+
 const SLOTS = 48  // half hours, UTC
 /** 48 booleans: which UTC half-hours fall inside the person's local core window. */
-export function coreSlots(offset, start = 9, end = 17) {
+export function coreSlots(offset, start = core.start, end = core.end) {
   const out = new Array(SLOTS).fill(false)
   for (let i = 0; i < SLOTS; i++) {
     const local = (((i / 2) + offset) % 24 + 24) % 24
@@ -76,7 +93,7 @@ export function coreSlots(offset, start = 9, end = 17) {
 }
 
 /** Shared core hours for a list of people. */
-export function coreOverlap(people, { start = 9, end = 17 } = {}) {
+export function coreOverlap(people, { start = core.start, end = core.end } = {}) {
   const known = [], unknown = []
   for (const p of people) {
     const z = zoneFor(p)

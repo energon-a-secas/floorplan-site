@@ -10,7 +10,8 @@
 
 import { state, ui, snapshot, setMembership, moveMember, splitMember, removeMembership, setLayout } from './state.js'
 import { afterChange, renderBoard, getLayout } from './render.js'
-import { $, showToast, escHtml, initials, safeColor } from './utils.js'
+import { $, showToast, escHtml, safeColor } from './utils.js'
+import { faceOf } from './workspace-adapter.js'
 import { avatarDataUrl } from './avatar.js'
 import { personTotals } from './allocation.js'
 
@@ -127,7 +128,7 @@ function movePerson(e) {
     const color = safeColor(drag.el.style.getPropertyValue('--seat-color').trim())
     ghost.innerHTML = ui.avatars && p
       ? `<img src="${avatarDataUrl(p.name, color, p.avatar || null)}" width="48" height="48" alt=""><span class="drag-ghost-hint"></span>`
-      : `<span class="drag-ghost-ini" style="--face:${color}">${escHtml(initials(p?.name))}</span><span class="drag-ghost-hint"></span>`
+      : `<span class="drag-ghost-ini" style="--face:${safeColor(faceOf(p || {}).color)};--face-ink:${safeColor(faceOf(p || {}).ink)}">${escHtml(faceOf(p || {}).initials)}</span><span class="drag-ghost-hint"></span>`
     document.body.appendChild(ghost)
     drag.ghost = ghost
   }

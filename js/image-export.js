@@ -79,13 +79,13 @@ export function buildSvg() {
       parts.push(`<path d="${d}" fill="none" stroke="rgba(148,163,184,.8)" stroke-width="3" stroke-dasharray="8 6" stroke-linejoin="round"/>`)
       if (c.label) {
         const a = c.points[Math.floor(c.points.length / 2) - 1], b = c.points[Math.floor(c.points.length / 2)]
-        parts.push(`<text x="${f(ox + (a[0] + b[0]) / 2 * cell)}" y="${f(oy + (a[1] + b[1]) / 2 * cell - 6)}" font-size="11" font-weight="600" text-anchor="middle" fill="rgba(226,232,240,.9)">${escHtml(c.label)}</text>`)
+        parts.push(`<text x="${f(ox + (a[0] + b[0]) / 2 * cell)}" y="${f(oy + (a[1] + b[1]) / 2 * cell - 6)}" font-size="12" font-weight="600" text-anchor="middle" fill="rgba(226,232,240,.9)">${escHtml(c.label)}</text>`)
       }
     }
   }
 
   const title = (state.meta.title || '').trim()
-  parts.push(`<text x="${PAD}" y="${H - 8}" font-size="11" fill="rgba(148,163,184,.9)">${escHtml(title ? title + ' · ' : '')}floorplan.neorgon.com</text>`)
+  parts.push(`<text x="${PAD}" y="${H - 8}" font-size="12" fill="rgba(148,163,184,.9)">${escHtml(title ? title + ' · ' : '')}floorplan.neorgon.com</text>`)
   parts.push('</svg>')
   return { svg: parts.join(''), width: W, height: H }
 }

@@ -104,7 +104,9 @@ export function renderRoster() {
   const fte = people.reduce((s, p) => s + Math.min(100, t.get(p.id)?.total || 0), 0) / 100
   const count = $('rosterCount'); if (count) count.textContent = people.length ? `${plural(people.length, 'person', 'people')} · ${fmtFte(fte)} FTE` : ''
   if (!people.length) {
-    list.innerHTML = '<p class="roster-empty">Nobody yet. Add a name below, paste an outline, or load an example.</p>'
+    list.innerHTML = ui.team
+      ? `<p class="roster-empty">Nobody yet. Add a name below, or bring the ${escHtml(plural(ui.team.people, 'person', 'people'))} from your workspace.</p><button type="button" class="btn btn--secondary btn--sm" data-action="use-team">Use my team</button>`
+      : '<p class="roster-empty">Nobody yet. Add a name below, paste an outline (Examples, then Import), or load an example.</p>'
     return
   }
   list.innerHTML = people.map(p => {
@@ -119,7 +121,7 @@ export function renderRoster() {
         <span class="chip-sub">${p.location ? escHtml(p.location) + ' · ' : ''}<span class="chip-pct" data-band="${escHtml(band)}">${tt.count ? escHtml(tt.total) + '%' : 'unassigned'}</span></span>
         <span class="chip-bar" aria-hidden="true"><i style="width:${Math.min(100, Number(tt.total) || 0)}%" data-band="${escHtml(band)}"></i></span>
       </span>
-      <button type="button" class="chip-remove" data-action="remove-person" data-id="${escHtml(p.id)}" aria-label="Remove ${escHtml(p.name)}">×</button>
+      <button type="button" class="chip-remove" data-action="remove-person" data-id="${escHtml(p.id)}" aria-label="Remove ${escHtml(p.name)}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
     </div>`
   }).join('')
 }
@@ -132,10 +134,12 @@ export function renderBoard() {
   const empty = !Object.keys(state.groups).length
   if (empty) {
     lastLayout = null
+    const team = ui.team
+    const teamText = team ? `${plural(team.people, 'person', 'people')}${team.teams ? ` in ${plural(team.teams, 'team')}` : ''}` : ''
     board.innerHTML = `<div class="board-empty">
       <h2>Nothing on the floor yet</h2>
-      <p>Add a group with <strong>+ Group</strong>, paste a markdown outline, write YAML in the side panel, or start from an example.</p>
-      <div class="toolbar"><button type="button" class="btn btn--primary" data-action="load-example" data-id="atlas">Load Atlas Program</button><button type="button" class="btn btn--secondary" data-action="load-example" data-id="revenue">Load Revenue Platform</button></div>
+      <p>${team ? `Start from your workspace (${escHtml(teamText)}), or a` : 'A'}dd a group with <strong>+ Group</strong>, paste a markdown outline under <strong>Examples, Import</strong>, write YAML in the side panel, or start from an example.</p>
+      <div class="toolbar">${team ? '<button type="button" class="btn btn--primary" data-action="use-team">Use my team</button>' : ''}<button type="button" class="btn ${team ? 'btn--secondary' : 'btn--primary'}" data-action="add-group">+ Group</button><button type="button" class="btn btn--secondary" data-action="load-example" data-id="atlas">Load Atlas Program</button><button type="button" class="btn btn--secondary" data-action="load-example" data-id="revenue">Load Revenue Platform</button></div>
     </div>`
     return
   }
@@ -231,7 +235,7 @@ function personDetail(p) {
   const shares = t.parts.map(x => `<li><span class="share-name">${escHtml(x.group.name)}</span>
       <input type="number" min="1" max="100" step="5" value="${escHtml(x.pct)}" data-share="${escHtml(`${x.group.id}:${p.id}`)}" aria-label="Share in ${escHtml(x.group.name)}"><span class="share-pct">%</span>
       <button type="button" class="btn btn--ghost btn--sm" data-action="unassign" data-group="${escHtml(x.group.id)}" data-person="${escHtml(p.id)}">Remove</button></li>`).join('')
-  return `<header class="sheet-head"><h2>${escHtml(p.name)}</h2><button type="button" class="btn btn--ghost btn--icon" data-action="close-detail" aria-label="Close">×</button></header>
+  return `<header class="sheet-head"><h2>${escHtml(p.name)}</h2><button type="button" class="btn btn--ghost btn--icon" data-action="close-detail" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
   <div class="sheet-body">
     <div class="sheet-face">${faceHtml(p, t.parts[0]?.group.color || p.color || '#475569', { px: 48 })}<span class="sheet-total" data-band="${escHtml(bandOf(t))}">${t.count ? escHtml(t.total) + '% allocated' : 'Unassigned'}</span></div>
     ${field('Name', 'person.name', p.name)}
@@ -262,7 +266,7 @@ function groupDetail(g) {
   const rooms = allGroups().filter(x => x.kind === 'group')
   const spanOpts = g.kind === 'band' ? `<fieldset class="sheet-field"><legend>Spans</legend><div class="span-grid">${rooms.map(r => `<label><input type="checkbox" data-span="${escHtml(r.id)}" ${g.spans.includes(r.id) ? 'checked' : ''}> ${escHtml(r.name)}</label>`).join('')}</div></fieldset>` : ''
   const kindLabel = g.kind === 'band' ? 'Shared space' : (g.parent ? 'Sub-group' : 'Group')
-  return `<header class="sheet-head"><h2>${escHtml(g.name)}</h2><button type="button" class="btn btn--ghost btn--icon" data-action="close-detail" aria-label="Close">×</button></header>
+  return `<header class="sheet-head"><h2>${escHtml(g.name)}</h2><button type="button" class="btn btn--ghost btn--icon" data-action="close-detail" aria-label="Close"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18M6 6l12 12"/></svg></button></header>
   <div class="sheet-body">
     <p class="sheet-hint">${kindLabel}${g.parent ? ` in ${escHtml(state.groups[g.parent]?.name || '')}` : ''}${g.extends.length ? ` · extends ${g.extends.map(escHtml).join(', ')}` : ''}</p>
     ${field('Name', 'group.name', g.name)}
@@ -416,7 +420,7 @@ function deepPeople(g) {
 function coverageHtml(g) {
   if (!g.needs?.length) return ''
   const have = new Set(deepPeople(g).flatMap(p => p.tags || []))
-  return `<div class="coverage">${g.needs.map(t => `<span class="cov-tag${have.has(t) ? ' is-ok' : ' is-missing'}">${have.has(t) ? '✓' : '✗'} ${escHtml(t)}</span>`).join('')}</div>`
+  return `<div class="coverage">${g.needs.map(t => `<span class="cov-tag${have.has(t) ? ' is-ok' : ' is-missing'}">${have.has(t) ? '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M2.5 6.5 5 9l4.5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="visually-hidden">covered:</span>' : '<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M3 3l6 6M9 3 3 9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span class="visually-hidden">missing:</span>'} ${escHtml(t)}</span>`).join('')}</div>`
 }
 function coreHoursHtml(g) {
   const people = deepPeople(g)

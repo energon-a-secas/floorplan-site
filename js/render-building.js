@@ -75,7 +75,7 @@ function roomHtml(g, r, straddled) {
   return `<section class="${classes}" data-drop="group" data-group="${gid}" style="${vars};z-index:${1 + (Number(r.depth) || 0)}" data-svg="box" tabindex="0" aria-label="${g.kind === 'band' ? 'Shared space' : 'Room'} ${escHtml(g.name)}">
     ${head}
     ${ownSeats ? `<div class="room-members${kids.length ? ' room-members--strip' : ''}">${ownSeats}</div>` : ''}
-    ${empty ? `<div class="g-empty">${g.kind === 'band' ? 'Shared space' : 'Empty room'}</div>` : ''}
+    ${empty ? `<div class="g-empty">${g.kind === 'band' ? 'Shared space: drop people here' : 'Empty room: drop people here'}</div>` : ''}
     ${g.owns.length && r.kind === 'room' ? `<div class="room-plaque" data-svg="owns">${g.owns.map(o => `<span class="own-tag" data-svg="tag">${escHtml(o)}</span>`).join('')}</div>` : ''}
     ${isRoom ? `<span class="room-resize" data-room-handle="resize" data-group="${gid}" title="Drag to resize" aria-hidden="true"></span>` : ''}
   </section>`

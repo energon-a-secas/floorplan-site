@@ -8,6 +8,7 @@
 import { state, ui } from './state.js'
 import { escHtml, initials, safeColor } from './utils.js'
 import { avatarImg, vacantImg } from './avatar.js'
+import { faceOf } from './workspace-adapter.js'
 import { personTotals, bandOf, groupStats, statsLabel } from './allocation.js'
 
 let totalsCache = null
@@ -16,7 +17,10 @@ export function totals() { return totalsCache || (totalsCache = personTotals()) 
 
 export function faceHtml(person, color, { px = 32, forceInitials = false } = {}) {
   if (ui.avatars && !forceInitials) return avatarImg(person.name, color, { px, custom: person.avatar || null })
-  return `<span class="face-disc" style="--face:${safeColor(color)};width:${px}px;height:${px}px" data-svg="disc">${escHtml(initials(person.name))}</span>`
+  // Initials are the Workspace Kit's face: the person's own colour, else one from their id, so a
+  // workspace person looks the same in every tool. Pixel sprites keep the group colour as shirt.
+  const f = faceOf(person)
+  return `<span class="face-disc" style="--face:${safeColor(f.color)};--face-ink:${safeColor(f.ink)};width:${px}px;height:${px}px" data-svg="disc">${escHtml(f.initials)}</span>`
 }
 
 /** One seated person inside a group. */
@@ -86,7 +90,7 @@ export function groupHeadHtml(group, { tag = 'header', showStats = true, extra =
     ${showStats ? `<span class="g-stats" data-svg="text" title="People in this group and its sub-groups; FTE adds their shares: two at 50% count as 1">${escHtml(statsLabel(group.id))}</span>` : ''}
     ${group.notes ? `<span class="g-note-dot" title="Has notes" aria-label="Has notes" data-action="select-group" data-id="${escHtml(group.id)}"></span>` : ''}
     ${extra}
-    <button type="button" class="g-more" data-action="select-group" data-id="${escHtml(group.id)}" aria-label="Group details: ${escHtml(group.name)}">···</button>
+    <button type="button" class="g-more" data-action="select-group" data-id="${escHtml(group.id)}" aria-label="Group details: ${escHtml(group.name)}"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" focusable="false"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
   </${tag}>`
 }
 

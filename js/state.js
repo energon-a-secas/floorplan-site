@@ -43,6 +43,7 @@ export const ui = {
   marks: null,        // diff overlay for the renderers (diff.js)
   drawerTab: 'insights',
   touring: false,     // first-visit tour is running (tour.js); view-only, never saved
+  team: null,         // { people, teams } when the Neorgon Workspace offers a team (workspace-link.js)
 }
 
 // ── Replace / clear ──────────────────────────────────────────

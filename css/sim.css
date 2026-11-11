@@ -28,7 +28,7 @@ body.simulating .seat[data-person] > .px-avatar, body.simulating .seat[data-pers
 @keyframes actor-ring { 50% { border-color: var(--accent-bright, #0284c7); } }
 .actor-tag {
   position: absolute; top: -11px; left: 50%; transform: translateX(-50%); white-space: nowrap;
-  font-family: 'Silkscreen', 'Press Start 2P', ui-monospace, Menlo, monospace; font-size: 9px; line-height: 1; color: #fff;
+  font-family: 'Silkscreen', 'Press Start 2P', ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1; color: #fff;
   background: var(--ink, #0b1020); padding: 2px 4px; border: 1px solid rgba(255,255,255,.4); pointer-events: none; display: none;
 }
 .actor:hover .actor-tag, .actor.is-selected .actor-tag, .actor.is-away .actor-tag { display: block; }
@@ -58,7 +58,7 @@ body.simulating .seat[data-person] > .px-avatar, body.simulating .seat[data-pers
 /* speech bubble: pixel font, ink box, small tail */
 .bubble {
   position: absolute; bottom: calc(100% - 6px); left: 50%; transform: translateX(-30%);
-  font-family: 'Silkscreen', 'Press Start 2P', ui-monospace, Menlo, monospace; font-size: 9px; line-height: 1; white-space: nowrap;
+  font-family: 'Silkscreen', 'Press Start 2P', ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1; white-space: nowrap;
   color: var(--ink, #0b1020); background: #fff; padding: 3px 5px; border: 2px solid var(--ink, #0b1020);
   box-shadow: 2px 2px 0 rgba(0,0,0,.5); pointer-events: none; z-index: 2; animation: bubble-in .12s steps(2);
 }
@@ -108,7 +108,7 @@ body.simulating .seat[data-person] > .px-avatar, body.simulating .seat[data-pers
 .sim-bar input[type="range"] { width: 150px; accent-color: var(--accent-bright, var(--accent)); }
 .sb-clock { font-size: var(--text-xs); color: var(--text-secondary); font-variant-numeric: tabular-nums; min-width: 150px; }
 .sb-status { font-size: var(--text-xs); color: var(--text-muted); flex: 1 1 220px; }
-.sb-status kbd { font-size: 10px; }
+.sb-status kbd { font-size: 12px; }
 body.embed .sim-bar { display: none !important; }
 .puzzle-bar .sb-label { color: #fbbf24; }
 .puzzle-bar .sb-status { flex: 1 1 320px; color: var(--text-secondary); }
