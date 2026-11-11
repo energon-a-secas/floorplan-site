@@ -65,6 +65,16 @@ export function bindEvents() {
 }
 
 // ── Menus (.header-menu, toggled by the site; Esc/outside handled here) ──
+// On a phone Examples and Export sit in the Header Kit's overflow menu. There a
+// submenu closes one level per Escape (back to its own button, the panel stays
+// open) and closes with the panel, so it never comes back already open.
+const watched = new WeakSet()
+function closeWithPanel(btn, close) {
+  const panel = btn.closest('.header-overflow-menu')
+  if (!panel || watched.has(btn)) return
+  watched.add(btn)
+  new MutationObserver(() => { if (!panel.classList.contains('open')) close() }).observe(panel, { attributes: true, attributeFilter: ['class'] })
+}
 function setupMenu(btnId, menuId, { stayOpen = false } = {}) {
   const btn = $(btnId), menu = $(menuId)
   if (!btn || !menu) return
@@ -77,11 +87,16 @@ function setupMenu(btnId, menuId, { stayOpen = false } = {}) {
     document.querySelectorAll('.header-menu.open').forEach(m => { if (!m.contains(btn)) m.classList.remove('open') })
     menu.classList.toggle('open', open)
     btn.setAttribute('aria-expanded', String(open))
-    if (open) menu.querySelector('[role="menuitem"]')?.focus()
+    if (open) { closeWithPanel(btn, close); menu.querySelector('[role="menuitem"]')?.focus() }
   })
   document.addEventListener('click', e => { if (!menu.contains(e.target) && e.target !== btn) close() })
   menu.addEventListener('click', e => { if (!stayOpen && e.target.closest('[role="menuitem"]')) close() })
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && menu.classList.contains('open')) { close(); btn.focus() } })
+  // Capture, ahead of the kit's own Escape (which would close the whole phone menu), and stopped there.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !menu.classList.contains('open')) return
+    e.stopPropagation()
+    close(); btn.focus()
+  }, true)
 }
 
 // ── Clicks ───────────────────────────────────────────────────
@@ -414,6 +429,7 @@ export function applyYaml() {
   ui.errors = errors; ui.warnings = warnings
   if (!model || errors.length) { renderYamlMessages(); showToast(`${errors.length || 1} problem${errors.length === 1 ? '' : 's'} in the YAML`); return false }
   snapshot()
+  model.wsFrom = state.wsFrom   // the panel edits the open document: what it took from the workspace stays its own
   resetTo(model)
   ui.yamlDirty = false
   markYamlInSync(text)

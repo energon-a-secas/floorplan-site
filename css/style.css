@@ -501,8 +501,10 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: max(.75rem, .85em)
 .nav-link[aria-pressed="true"] { background: rgba(255,255,255,.16); color: #fff; border-color: rgba(255,255,255,.4); }
 .menu-wrap { position: relative; }
 /* In the Header Kit's phone menu a submenu opens in place, under its button: absolute, it sat inside a
-   panel that scrolls and was cut off. */
-.header-overflow-menu .header-menu { position: static; min-width: 0; max-height: none; margin: 2px 0 4px 12px; padding: 4px; box-shadow: none; border-radius: 8px; }
+   panel that scrolls and was cut off. It adds no width of its own (contain), so the panel keeps the
+   width it opened at, and its rows wrap inside it instead of pushing the panel off the screen. */
+.header-overflow-menu .header-menu { position: static; min-width: 0; max-width: none; max-height: none; contain: inline-size; margin: 2px 0 4px 12px; padding: 4px; box-shadow: none; border-radius: 8px; }
+.header-overflow-menu .header-menu [role="menuitem"] { white-space: normal; flex-wrap: wrap; column-gap: 6px; padding-block: 8px; }
 .header-menu small { display: block; font-size: 12px; opacity: .7; font-weight: 400; }
 .nav-link--badge { position: relative; }
 /* Settings and Help: words, as every other header control and as in Rama. Between 701px and 1199px the

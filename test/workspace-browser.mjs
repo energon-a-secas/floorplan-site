@@ -267,6 +267,10 @@ for (const eng of engines) {
     const small = await tinyText(page)
     check(eng, 'no reading text under 12px (diagram)', small.length === 0, JSON.stringify(small))
 
+    // A name fixed after Use my team (here, and after a reload) still saves under the workspace id.
+    await page.evaluate(async () => { const m = await import('/js/state.js'); m.state.people.ana.name = 'Ana Rojas-Paz'; m.saveState() })
+    await go(page, `${TOOL}?v=${++v}`)
+    await waitShared(page)
     // Save these people: a link to the Workspace page's review carrying them.
     await page.keyboard.press(',')
     const nav = page.waitForURL(u => u.href.startsWith(`${FRAME}/workspace/`), { timeout: 5000 })
@@ -275,6 +279,7 @@ for (const eng of engines) {
     const got = W.parseFragment(new URL(page.url()).hash, { selfHostname: 'localhost' })
     const pay = got && got.op === 'save' ? W.decodePayload(got.payload) : null
     check(eng, 'save opens the review with the same ids', !!pay && pay.ws.people.map(p => p.id).sort().join() === 'ana,ben,kai' && got.tool === 'floorplan', JSON.stringify(pay && pay.ws.people.map(p => p.id)))
+    check(eng, 'a person renamed after Use my team (and a reload) keeps the workspace id', !!pay && pay.ws.people.find(p => p.id === 'ana')?.name === 'Ana Rojas-Paz', JSON.stringify(pay && pay.ws.people.map(p => p.id + ':' + p.name)))
 
     // An empty board offers the team.
     await go(page, `${TOOL}?v=${++v}`)
@@ -326,10 +331,49 @@ for (const eng of engines) {
       return { overflowOpen: document.querySelector('.header-overflow-menu').classList.contains('open'), open: menu.classList.contains('open'), expanded: document.getElementById('examplesBtn').getAttribute('aria-expanded'), hit: !!hit && item.contains(hit), inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth }
     })
     check(eng, 'Examples opens from the phone menu, its rows in view and on top', sub.overflowOpen && sub.open && sub.expanded === 'true' && sub.hit && sub.inView, JSON.stringify(sub))
+    const fits = () => pp.evaluate(() => {
+      const panel = document.querySelector('.header-overflow-menu').getBoundingClientRect()
+      const cut = [...document.querySelectorAll('.header-overflow-menu .header-menu.open [role="menuitem"]')].filter(b => b.scrollWidth > b.clientWidth + 1).map(b => b.textContent.trim())
+      return { left: Math.round(panel.left), right: Math.round(panel.right), w: innerWidth, cut }
+    })
+    const fit390 = await fits()
+    check(eng, 'with Examples open the phone menu stays on screen and no row is cut (390)', fit390.left >= 0 && fit390.right <= fit390.w && fit390.cut.length === 0, JSON.stringify(fit390))
+    if (SHOTS) await pp.screenshot({ path: `${SHOTS}/floorplan-${eng}-390-examples-open.png` })
+    // Escape steps back one level: the submenu closes, the phone menu stays, focus on Examples.
+    await pp.keyboard.press('ArrowDown')
+    await pp.keyboard.press('Escape')
+    const esc1 = await pp.evaluate(() => ({ overflow: document.querySelector('.header-overflow-menu').classList.contains('open'), sub: document.getElementById('examplesMenu').classList.contains('open'), expanded: document.getElementById('examplesBtn').getAttribute('aria-expanded'), focus: document.activeElement?.id }))
+    check(eng, 'Escape in a phone submenu closes that one level and returns to its button', esc1.overflow && !esc1.sub && esc1.expanded === 'false' && esc1.focus === 'examplesBtn', JSON.stringify(esc1))
+    await pp.keyboard.press('Escape')
+    const esc2 = await pp.evaluate(() => ({ overflow: document.querySelector('.header-overflow-menu').classList.contains('open'), focus: document.activeElement?.className }))
+    check(eng, 'a second Escape closes the phone menu, focus on its toggle', !esc2.overflow && /header-overflow-toggle/.test(esc2.focus), JSON.stringify(esc2))
+    // The toggle closing the phone menu closes the submenu with it, so it never comes back already open.
+    await pp.locator('.header-overflow-toggle').click()
+    await pp.locator('.header-overflow-menu #exportBtn').click()
+    const exp = await pp.evaluate(() => document.getElementById('exportMenu').classList.contains('open'))
+    check(eng, 'Export opens from the phone menu too', exp)
+    await pp.locator('.header-overflow-toggle').click()
+    await pp.waitForTimeout(50)
+    await pp.locator('.header-overflow-toggle').click()
+    const stale = await pp.evaluate(() => ({ overflow: document.querySelector('.header-overflow-menu').classList.contains('open'), sub: document.getElementById('exportMenu').classList.contains('open'), expanded: document.getElementById('exportBtn').getAttribute('aria-expanded') }))
+    check(eng, 'a submenu closes with the phone menu and is shut when it opens again', stale.overflow && !stale.sub && stale.expanded === 'false', JSON.stringify(stale))
+    await pp.locator('.header-overflow-menu #examplesBtn').click()
     await pp.locator('#examplesMenu [data-example="atlas"]').click()
     await pp.waitForTimeout(400)
     const after = await pp.evaluate(() => ({ overflow: document.querySelector('.header-overflow-menu').classList.contains('open'), sub: document.getElementById('examplesMenu').classList.contains('open'), groups: document.querySelectorAll('#board .g-name').length }))
     check(eng, 'an example picked there loads, and both menus close', !after.overflow && !after.sub && after.groups > 0, JSON.stringify(after))
+    // At 320 the rows wrap inside the panel instead of being cut, and opening Examples does not widen it.
+    // (Not "on screen": the page already scrolls 24px sideways at 320 with every menu closed.)
+    await pp.setViewportSize({ width: 320, height: 700 })
+    await pp.waitForTimeout(200)
+    await pp.locator('.header-overflow-toggle').click()
+    await pp.waitForTimeout(300)   // past the panel's opening scale
+    const shut320 = await fits()
+    await pp.locator('.header-overflow-menu #examplesBtn').click()
+    await pp.waitForTimeout(300)
+    const fit320 = await fits()
+    check(eng, 'at 320 Examples opens without widening the phone menu, and no row is cut', fit320.left === shut320.left && fit320.right === shut320.right && fit320.cut.length === 0, JSON.stringify([shut320, fit320]))
+    if (SHOTS) await pp.screenshot({ path: `${SHOTS}/floorplan-${eng}-320-examples-open.png` })
     await phone.close()
 
     // The Building view of the Atlas example (a fresh context: no saved map), as at 1440.
