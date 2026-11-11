@@ -12,25 +12,52 @@ import { faceOf } from './workspace-adapter.js'
 import { personTotals, bandOf, groupStats, statsLabel } from './allocation.js'
 
 let totalsCache = null
-export function beginFrame() { totalsCache = personTotals() }
+let namesCache = null
+export function beginFrame() { totalsCache = personTotals(); namesCache = null }
 export function totals() { return totalsCache || (totalsCache = personTotals()) }
 
-// A desk's name plate: the first name and the last initial ("Noor H."). A desk is
-// 1.55 cells wide and its name has one 12px line, so a full name wrapped and the
-// second line went under the share bar. The full name stays in the seat's
-// aria-label and the plate's title.
+// A desk's name plate: the first name and the start of the last name ("Noor H."). A
+// desk is 1.55 cells wide and its name has one 12px line, so a full name wrapped and
+// the second line went under the share bar. Two people who would share a plate get
+// as many letters of the last name as tells them apart ("Ana Ro.", "Ana Ru."). The
+// full name stays in the seat's aria-label and the plate's title.
+const words = name => String(name || '').trim().split(/\s+/).filter(Boolean)
+function plate(name, n) {
+  const w = words(name)
+  if (w.length < 2) return w[0] || ''
+  const last = [...w[w.length - 1]]
+  return n >= last.length ? `${w[0]} ${last.join('')}` : `${w[0]} ${last.slice(0, n).join('')}.`
+}
+function plates() {
+  const all = Object.values(state.people || {}).map(p => String(p.name || '').trim())
+  const sig = all.join('\n')   // a rename between frames must not leave a stale plate
+  if (namesCache && namesCache.sig === sig) return namesCache
+  const full = [...new Set(all.filter(Boolean))]
+  namesCache = new Map()
+  namesCache.sig = sig
+  const short = new Map()   // the one-letter plate, and who shares it: only they need more letters
+  for (const name of full) { const k = plate(name, 1); short.set(k, [...(short.get(k) || []), name]) }
+  for (const name of full) {
+    const rivals = short.get(plate(name, 1)).filter(o => o !== name)
+    let n = 1
+    const longest = Math.max(1, ...[name, ...rivals].map(o => [...(words(o).slice(-1)[0] || '')].length))
+    while (n < longest && rivals.some(o => plate(o, n) === plate(name, n))) n++
+    namesCache.set(name, plate(name, n))
+  }
+  return namesCache
+}
 export function deskName(name) {
-  const words = String(name || '').trim().split(/\s+/).filter(Boolean)
-  if (words.length < 2) return words[0] || ''
-  const last = [...words[words.length - 1]][0]
-  return `${words[0]} ${last}.`
+  const key = String(name || '').trim()
+  return plates().get(key) || plate(key, 1)
 }
 
-export function faceHtml(person, color, { px = 32, forceInitials = false } = {}) {
+export function faceHtml(person, color, { px = 32, forceInitials = false, tint = false } = {}) {
   if (ui.avatars && !forceInitials) return avatarImg(person.name, color, { px, custom: person.avatar || null })
   // Initials are the Workspace Kit's face: the person's own colour, else one from their id, so a
   // workspace person looks the same in every tool. Pixel sprites keep the group colour as shirt.
+  // `tint` keeps the caller's colour instead: a removed person in the version diff stays grey.
   const f = faceOf(person)
+  if (tint) { f.color = color; f.ink = '#ffffff' }
   return `<span class="face-disc" style="--face:${safeColor(f.color)};--face-ink:${safeColor(f.ink)};width:${px}px;height:${px}px" data-svg="disc">${escHtml(f.initials)}</span>`
 }
 
@@ -70,7 +97,7 @@ export function ghostSeatsHtml(group, { compact = false } = {}) {
   const list = ui.marks?.ghosts.get(group.id) || []
   return list.map(gh => `<div class="seat seat--ghost seat--ghost-${escHtml(gh.kind)}${compact ? ' seat--compact' : ''}" title="${escHtml(gh.name)}: ${escHtml(gh.text)}" aria-label="${escHtml(gh.name)} ${escHtml(gh.text)} (baseline)" style="--seat-color:${safeColor(group.color)}" data-svg="box">
     <span class="diff-tag diff-tag--${escHtml(gh.kind)}" data-svg="tag">${escHtml(gh.text)}</span>
-    ${state.people[gh.person] ? faceHtml(state.people[gh.person], '#475569') : `<span class="face-disc" style="--face:#475569;width:32px;height:32px">${escHtml(initials(gh.name))}</span>`}
+    ${state.people[gh.person] ? faceHtml(state.people[gh.person], '#475569', { tint: true }) : `<span class="face-disc" style="--face:#475569;width:32px;height:32px">${escHtml(initials(gh.name))}</span>`}
     <span class="seat-meta"><span class="seat-name" data-svg="text">${escHtml(compact ? deskName(gh.name) : gh.name)}</span><span class="seat-loc">${escHtml(gh.pct)}% before</span></span>
   </div>`).join('')
 }

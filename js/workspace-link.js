@@ -34,7 +34,23 @@ let hoursNote = null    // the Floorplan section's core-hours line, while the sh
 
 const editable = () => !ui.readonly && !ui.embed
 
+/**
+ * index.html moves a pick's answer (#neo-ws=...) out of the address before the
+ * Header Kit's analytics can read it. Put it back for the one synchronous moment
+ * the client needs: NeoWorkspace.init reads it, checks it against this tab's pick
+ * marker and strips it again before any other script runs. As in Reparto.
+ */
+function holdBackAnswer(restore) {
+  const held = window.__neoWsAnswer
+  try { delete window.__neoWsAnswer } catch { window.__neoWsAnswer = undefined }
+  if (!restore || typeof held !== 'string' || !/^#neo-ws=[^\s]*$/.test(held) || held.length > 410000) return
+  try {
+    if (location.hash === '' || location.hash === '#') history.replaceState(history.state, '', location.pathname + location.search + held)
+  } catch { /* sandboxed: the answer is lost, the team still comes from the frame */ }
+}
+
 export function startWorkspace() {
+  holdBackAnswer(!ui.embed)   // an embed never asked, so its answer is dropped
   // An embed has no gear and never uses the team, so it loads no frame: a page
   // that embeds Floorplan must not pull the visitor's workspace into it. The
   // visitor's own working hours (the neo_me cookie, validated) still set core hours.
@@ -180,5 +196,5 @@ function renderSection(el) {
     row.append(forget)
   }
   el.append(row)
-  el.append(el_('p', 'neo-ws-note', 'How seats are drawn (Display in the toolbar) belongs to the document, so a link or an embed looks the same for everyone.'))
+  el.append(el_('p', 'neo-ws-note fp-ws-tail', 'How seats are drawn (Display in the toolbar) belongs to the document, so a link or an embed looks the same for everyone.'))
 }

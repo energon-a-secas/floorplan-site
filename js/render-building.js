@@ -26,7 +26,7 @@ export function renderBuilding() {
 
   // rooms, subs, bands, titles (draw order: depth)
   const ordered = Object.entries(rects).sort((a, b) => a[1].depth - b[1].depth)
-  for (const [id, r] of ordered) parts.push(roomHtml(state.groups[id], r, straddled))
+  for (const [id, r] of ordered) parts.push(roomHtml(state.groups[id], r, straddled, straddles))
 
   // corridors (SVG overlay in cell units; strokes do not scale)
   if (corridors.length) {
@@ -54,7 +54,18 @@ export function renderBuilding() {
   return { html: parts.join(''), layout }
 }
 
-function roomHtml(g, r, straddled) {
+// A seat on a shared side wall reaches about a desk's half into each room; the room
+// keeps that strip clear so the seat does not cover a desk's name plate.
+function wallSides(g, r, straddles) {
+  const near = (a, b) => Math.abs(a - b) < 1e-6
+  const mine = straddles.filter(s => s.a === g.id || s.b === g.id)   // a side-wall seat has y strictly inside the room
+  return {
+    left: mine.some(s => near(s.x, r.x) && s.y > r.y && s.y < r.y + r.h),
+    right: mine.some(s => near(s.x, r.x + r.w) && s.y > r.y && s.y < r.y + r.h),
+  }
+}
+
+function roomHtml(g, r, straddled, straddles = []) {
   if (!g) return ''
   const vars = `--x:${Number(r.x) || 0};--y:${Number(r.y) || 0};--w:${Number(r.w) || 0};--h:${Number(r.h) || 0};--g:${safeColor(g.color)}`
   const gid = escHtml(g.id)
@@ -69,7 +80,8 @@ function roomHtml(g, r, straddled) {
   const isRoom = r.kind === 'room' || r.kind === 'band'
   const narrow = r.w < 2.5
   const gmark = ui.marks?.groups.get(g.id)
-  const classes = escHtml(['room', `room--${r.kind}`, `depth-${Math.min(r.depth, 3)}`, g.kind === 'band' ? 'room--shared' : '', kids.length ? 'has-subs' : '', narrow ? 'room--narrow' : '', g.owns.length && r.kind === 'room' ? 'has-plaque' : '', gmark ? 'diff-' + gmark : ''].filter(Boolean).join(' '))
+  const wall = wallSides(g, r, straddles)
+  const classes = escHtml(['room', wall.left ? 'room--strad-l' : '', wall.right ? 'room--strad-r' : '', `room--${r.kind}`, `depth-${Math.min(r.depth, 3)}`, g.kind === 'band' ? 'room--shared' : '', kids.length ? 'has-subs' : '', narrow ? 'room--narrow' : '', g.owns.length && r.kind === 'room' ? 'has-plaque' : '', gmark ? 'diff-' + gmark : ''].filter(Boolean).join(' '))
   const head = groupHeadHtml(g, { showStats: !narrow && r.w >= 6, extra: isRoom ? `<span class="room-grip" data-room-handle="move" data-group="${gid}" title="Drag to move the room" aria-hidden="true"></span>` : '' })
   const empty = !ownSeats && !kids.length
   return `<section class="${classes}" data-drop="group" data-group="${gid}" style="${vars};z-index:${1 + (Number(r.depth) || 0)}" data-svg="box" tabindex="0" aria-label="${g.kind === 'band' ? 'Shared space' : 'Room'} ${escHtml(g.name)}">

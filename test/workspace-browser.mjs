@@ -73,6 +73,67 @@ async function waitShared(page) {
   return teamState(page)
 }
 
+/**
+ * No analytics beacon carries a team (the plan's privacy amendment). The Header
+ * Kit starts analytics only on *.neorgon.com, so on localhost nothing could be
+ * seen. Here Floorplan is served as floorplan.neorgon.com (every request answered
+ * from the local server, nothing leaves the machine), the analytics scripts are
+ * answered with empty stand-ins, and the page records the address each one would
+ * read when it runs: an answer still in the fragment then would reach a beacon
+ * that sends the full URL. It also fails if no analytics script was requested,
+ * so it cannot pass by default. As in reparto-site's step 8.
+ */
+const HOST = 'http://floorplan.neorgon.com'
+const ANALYTICS = /gc\.zgo\.at|goatcounter\.com|cloudflareinsights\.com/
+async function analytics(browser, eng) {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  await ctx.addInitScript(() => { try { localStorage.setItem('floorplan-tour-v1', '1') } catch { /* none */ } })
+  const outside = []
+  // One fetch at a time, retried: serve.py resets connections when a page asks for twenty files at once.
+  let queue = Promise.resolve()
+  const local = path => (queue = queue.catch(() => {}).then(async () => {
+    for (let i = 0; ; i++) {
+      try { const r = await ctx.request.get(`http://127.0.0.1:${TOOL_PORT}${path}`); return { status: r.status(), headers: r.headers(), body: await r.body() } } catch (err) {
+        if (i >= 5) throw err
+        await new Promise(res => setTimeout(res, 200))
+      }
+    }
+  }))
+  await ctx.route('**/*', async route => {
+    const u = new URL(route.request().url())
+    if (u.origin === HOST) return route.fulfill(await local(u.pathname + u.search))
+    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return route.continue()
+    outside.push(u.href)
+    return route.fulfill({ status: 200, contentType: /\.js$/.test(u.pathname) ? 'text/javascript' : 'text/html', body: '' })
+  })
+  await ctx.addInitScript(([re]) => {
+    const seen = window.__analyticsSaw = []
+    const pattern = new RegExp(re)
+    new MutationObserver(list => {
+      for (const m of list) for (const n of m.addedNodes) {
+        if (n.tagName !== 'SCRIPT' || !pattern.test(n.src || '')) continue
+        const at = () => seen.push({ src: n.src, href: location.href })
+        n.addEventListener('load', at); n.addEventListener('error', at)
+      }
+    }).observe(document, { childList: true, subtree: true })
+  }, [ANALYTICS.source])
+  const page = await ctx.newPage()
+  try {
+    await go(page, `${HOST}/?v=${++v}#neo-ws=${await W.encodePayload(team(), { compress: false })}&stamp=${W.makeStamp()}`)
+    await page.waitForSelector('#settingsBtn')
+    await page.waitForTimeout(1500)
+    const saw = await page.evaluate(() => window.__analyticsSaw)
+    check(eng, 'analytics start on the neorgon.com host (the next checks measure something)', outside.some(u => ANALYTICS.test(u)), JSON.stringify(outside))
+    check(eng, 'no analytics request carries the team', !outside.some(u => u.includes('neo-ws=')), outside.filter(u => u.includes('neo-ws=')).join(' ').slice(0, 200))
+    check(eng, 'no analytics script runs while the answer is in the address', saw.length > 0 && !saw.some(x => x.href.includes('neo-ws=')), JSON.stringify(saw).slice(0, 300))
+    // Held back from the address, the answer still reaches the client, which refuses it: this tab never asked.
+    const late = await page.evaluate(async () => ({ hash: location.hash, issues: (await import('/js/neorgon-workspace.js')).NeoWorkspace.current.team().issues.map(i => i.msg) }))
+    check(eng, 'the held-back answer still reaches the client (and an unasked one is refused)', late.hash === '' && late.issues.some(m => /did not ask/.test(m)), JSON.stringify(late))
+  } catch (err) {
+    check(eng, 'analytics run', false, String(err && err.stack || err))
+  } finally { await ctx.close() }
+}
+
 for (const eng of engines) {
   const browser = await launch(eng)
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
@@ -103,6 +164,19 @@ for (const eng of engines) {
     const gear = page.locator('.header-actions #settingsBtn')
     check(eng, 'Settings sits in .header-actions and names the , key', await gear.count() === 1 && await gear.getAttribute('aria-keyshortcuts') === ',' && await page.locator('.neo-ws-gear').count() === 0)
     check(eng, 'the Settings button is named Settings', (await gear.getAttribute('aria-label') || (await gear.textContent()).trim()) === 'Settings')
+    const head = await page.evaluate(() => {
+      const bar = document.querySelector('.header-bar'), set = document.getElementById('settingsBtn')
+      const lum = c => { const [r, g, b] = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(n => { n /= 255; return n <= 0.03928 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4 }); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+      const badge = document.getElementById('insightBadge'), cs = getComputedStyle(badge)
+      const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05) }
+      const link = document.querySelector('.panel-hint a[href="llms.txt"]')
+      return { skin: bar.dataset.headerSkin, setW: set.getBoundingClientRect().width, setText: set.innerText.trim(), help: document.getElementById('helpBtn').innerText.trim(),
+        badge: badge.hidden ? null : Math.round(ratio(cs.color, cs.backgroundColor) * 100) / 100, high: badge.dataset.high, link: link ? getComputedStyle(link).color : null }
+    })
+    check(eng, 'the header wears the slate skin (sky accent, as the content)', head.skin === 'slate', JSON.stringify(head))
+    check(eng, 'at 1440 Settings and Help are words, as every other header control', head.setText === 'Settings' && head.setW > 80 && head.help === 'Help', JSON.stringify(head))
+    check(eng, 'the Insights count reads at 4.5:1 or better', head.badge === null || head.badge >= 4.5, JSON.stringify(head))
+    check(eng, 'the llms.txt link is not the browser default blue', head.link && head.link !== 'rgb(0, 0, 238)', JSON.stringify(head))
     await gear.click()
     check(eng, 'the Settings button opens Settings', await page.locator('dialog.neo-ws-sheet[open]').count() === 1)
     await page.keyboard.press('Escape')
@@ -114,6 +188,8 @@ for (const eng of engines) {
     const sectionText = await sheet.innerText()
     check(eng, 'the Floorplan section shows the core hours', /Core hours are your working hours above, 09:00 to 17:00/.test(sectionText), sectionText.slice(0, 300))
     check(eng, 'team names are text, never markup', await sheet.locator('b, img').count() === 0)
+    const gapNote = await sheet.locator('.fp-ws-tail').evaluate(n => n.getBoundingClientRect().top - n.previousElementSibling.getBoundingClientRect().bottom)
+    check(eng, 'the closing note of the Floorplan section stands apart from its buttons', gapNote >= 12, String(gapNote))
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/floorplan-${eng}-settings.png` })
     await page.keyboard.press('Escape')
     await page.waitForTimeout(100)
@@ -159,6 +235,17 @@ for (const eng of engines) {
     const anaBg = await page.locator('#board .seat[data-person="ana"] .face-disc').first().evaluate(el => getComputedStyle(el).backgroundColor)
     const hex = W.colorFor({ id: 'ana' })
     check(eng, 'a colourless person gets colorFor(id)', anaBg === `rgb(${parseInt(hex.slice(1, 3), 16)}, ${parseInt(hex.slice(3, 5), 16)}, ${parseInt(hex.slice(5, 7), 16)})`, anaBg + ' ' + hex)
+    // A removed person in the version diff stays grey, whatever their own colour.
+    const ghost = await page.evaluate(async () => { const pt = await import('/js/parts.js'); const s = await import('/js/state.js'); const d = document.createElement('div'); d.innerHTML = pt.faceHtml(s.state.people.kai, '#475569', { tint: true }); return getComputedStyle(document.body.appendChild(d).firstElementChild).getPropertyValue('--face').trim() })
+    check(eng, 'a tinted face keeps the caller colour (ghost seats stay grey)', ghost === '#475569', ghost)
+    // Two people who would share a desk plate are told apart.
+    const plates = await page.evaluate(async () => { const pt = await import('/js/parts.js'); const s = await import('/js/state.js'); const keep = s.state.people; s.state.people = { a: { name: 'Ana Rojas' }, b: { name: 'Ana Ruiz' }, c: { name: 'Noor Haddad' }, d: { name: 'Bo' } }; const out = ['Ana Rojas', 'Ana Ruiz', 'Noor Haddad', 'Bo'].map(pt.deskName); s.state.people = keep; return out })
+    check(eng, 'desk plates tell two Ana R. apart', JSON.stringify(plates) === JSON.stringify(['Ana Ro.', 'Ana Ru.', 'Noor H.', 'Bo']), JSON.stringify(plates))
+    // The group sheet's move buttons are drawn, not glyphs.
+    await page.evaluate(async () => { const s = await import('/js/state.js'); const r = await import('/js/render.js'); s.ui.selection = { type: 'group', id: Object.keys(s.state.groups)[0] }; r.render() })
+    const moves = await page.locator('[data-action="move-group"]').evaluateAll(els => els.map(e => [e.querySelector('svg') ? 'svg' : e.textContent.trim(), e.getAttribute('aria-label')]))
+    check(eng, 'Move earlier and Move later are SVG icons', moves.length === 2 && moves.every(m => m[0] === 'svg' && m[1]), JSON.stringify(moves))
+    await page.evaluate(async () => { const s = await import('/js/state.js'); const r = await import('/js/render.js'); s.ui.selection = null; r.render() })
 
     // Nothing under 12px in the header and the board, in both views; no desk name clipped.
     // The footer is left out: its 11.5px note and stamp are the Footer Kit's, fleet-wide.
@@ -202,11 +289,19 @@ for (const eng of engines) {
     await pp.locator('.header-overflow-toggle').click()
     const word = await pp.locator('.header-overflow-menu #settingsBtn .nav-label').evaluate(e => [e.textContent, e.getBoundingClientRect().width])
     check(eng, 'in the phone menu Settings shows its word', word[0] === 'Settings' && word[1] > 30, JSON.stringify(word))
+    const helpWord = await pp.locator('.header-overflow-menu #helpBtn').evaluate(e => e.innerText.trim())
+    check(eng, 'in the phone menu Help is a word, not a lone ?', helpWord === 'Help', helpWord)
     await pp.keyboard.press('Escape')
     const chips = await pp.evaluate(() => [...document.querySelectorAll('#rosterList .chip')].slice(0, 2).map(c => Math.round(c.getBoundingClientRect().top)))
     check(eng, 'the phone roster holds two chips to a row', chips.length === 2 && chips[0] === chips[1], JSON.stringify(chips))
     const scroll = await pp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
     check(eng, 'no sideways scroll at 390', scroll <= 0, String(scroll))
+    const bar = await pp.evaluate(() => {
+      const top = el => Math.round(el.getBoundingClientRect().top)
+      return { h: Math.round(document.querySelector('.board-toolbar').getBoundingClientRect().height), title: top(document.getElementById('docTitle')), undo: top(document.getElementById('undoBtn')), redo: top(document.getElementById('redoBtn')) }
+    })
+    check(eng, 'the phone toolbar keeps Undo and Redo on one row, beside the title', bar.undo === bar.redo && Math.abs(bar.undo - bar.title) <= 4, JSON.stringify(bar))
+    check(eng, 'the phone toolbar is three rows in the Diagram view (under 170px)', bar.h <= 170, JSON.stringify(bar))
     await pp.evaluate(() => document.getElementById('teamDialog').showModal())
     const dlgTiny = await pp.evaluate(() => [...document.querySelectorAll('#teamDialog button')].map(el => [el.textContent.trim() || el.getAttribute('aria-label'), el.getBoundingClientRect().height]).filter(([, h]) => h < 44))
     check(eng, 'the replace dialog buttons are 44px on touch', dlgTiny.length === 0, JSON.stringify(dlgTiny))
@@ -226,6 +321,15 @@ for (const eng of engines) {
     check(eng, 'a desk shows the short name, the full one in its title', /^\S+ \S\.$/.test(plate[0]) && plate[1].startsWith(plate[0].slice(0, -2)), JSON.stringify(plate))
     const tbH = await bp.locator('.board-toolbar').evaluate(e => e.getBoundingClientRect().height)
     check(eng, 'the building toolbar keeps to two rows at 1440', tbH <= 110, String(tbH))
+    const covered = await bp.evaluate(() => {
+      const out = []
+      for (const st of document.querySelectorAll('.seat--straddle')) {
+        const a = st.getBoundingClientRect()
+        for (const d of document.querySelectorAll('.room .seat--compact')) { const c = d.getBoundingClientRect(); if (Math.min(a.right, c.right) - Math.max(a.left, c.left) > 0 && Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top) > 0) out.push(d.textContent.trim().replace(/\s+/g, ' ')) }
+      }
+      return { straddles: document.querySelectorAll('.seat--straddle').length, out }
+    })
+    check(eng, 'a seat on a shared wall covers no desk', covered.straddles > 0 && covered.out.length === 0, JSON.stringify(covered))
     await wide.close()
 
     // An embed loads no workspace frame: a page that embeds Floorplan never reads the visitor's team.
@@ -236,6 +340,7 @@ for (const eng of engines) {
     await emb.close()
 
     check(eng, 'no page errors', errors.length === 0, JSON.stringify(errors.slice(0, 5)))
+    await analytics(browser, eng)
   } catch (err) {
     check(eng, 'run', false, String(err && err.stack || err))
   } finally { await browser.close() }

@@ -87,6 +87,9 @@ body.visiting .room-resize, body.visiting .room-grip { display: none; }
   flex: 1; min-height: 0; display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; align-content: flex-start; overflow: hidden;
 }
 .room-members--strip { flex: 0 0 calc(var(--cell) * 1.9); min-height: 0; }
+/* A seat on a shared side wall (.seat--straddle, 1.9 cells centred on the wall) reaches into the room; its strip stays clear. */
+.room--strad-l > .room-members { padding-left: calc(var(--cell) * .95 + 2px); }
+.room--strad-r > .room-members { padding-right: calc(var(--cell) * .95 + 2px); }
 .room--band .room-members { padding: 3px 6px; }
 .room > .g-empty { margin: auto; border: none; background: rgba(0,0,0,.2); color: rgba(255,255,255,.55); font-size: 12px; letter-spacing: .05em; text-transform: uppercase; padding: 6px 10px; }
 .room-plaque {

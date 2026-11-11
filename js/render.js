@@ -285,8 +285,8 @@ function groupDetail(g) {
     ${own ? `<ul class="share-list">${own}</ul>` : '<p class="sheet-hint">No direct members. Drop people onto this group.</p>'}
     <div class="sheet-actions">
       ${g.kind === 'group' ? `<button type="button" class="btn btn--secondary btn--sm" data-action="add-subgroup" data-id="${escHtml(g.id)}">+ Sub-group</button>` : ''}
-      <button type="button" class="btn btn--ghost btn--sm" data-action="move-group" data-id="${escHtml(g.id)}" data-dir="-1" aria-label="Move earlier">◀</button>
-      <button type="button" class="btn btn--ghost btn--sm" data-action="move-group" data-id="${escHtml(g.id)}" data-dir="1" aria-label="Move later">▶</button>
+      <button type="button" class="btn btn--ghost btn--sm btn--icon" data-action="move-group" data-id="${escHtml(g.id)}" data-dir="-1" aria-label="Move earlier" title="Move earlier"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 18 9 12l6-6"/></svg></button>
+      <button type="button" class="btn btn--ghost btn--sm btn--icon" data-action="move-group" data-id="${escHtml(g.id)}" data-dir="1" aria-label="Move later" title="Move later"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg></button>
       ${g.layout ? `<button type="button" class="btn btn--ghost btn--sm" data-action="clear-layout" data-id="${escHtml(g.id)}" title="Let the packer place this room">Auto place</button>` : ''}
       <button type="button" class="btn btn--danger btn--sm" data-action="remove-group" data-id="${escHtml(g.id)}">Delete</button>
     </div>

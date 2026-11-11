@@ -433,7 +433,7 @@ export function loadExample(id, { firstRun = false } = {}) {
   if (firstRun) {
     // The tour's first card carries the orientation; the toast is the fallback
     // when it is gated (embed, readonly, ?sim=, or already seen).
-    import('./tour.js').then(m => { if (!m.startTour()) showToast('This is the Atlas example, loaded to look around. The ? button up top explains everything') })
+    import('./tour.js').then(m => { if (!m.startTour()) showToast('This is the Atlas example, loaded to look around. Press ? for help with every feature and key') })
   } else showToast(`Loaded ${ex.name}. Cmd/Ctrl+Z brings back what was there`)
 }
 

@@ -21,11 +21,11 @@ const STEPS = [
     body: 'The whole map is one YAML document: edit it, apply it, share it as a link.' },
   { sel: '#insightToggle', fallback: '.header-overflow-toggle', title: 'Insights watches',
     body: 'Over-allocation, missing skills, thin timezone overlap: the badge counts what needs a look.' },
-  { sel: '#helpBtn', fallback: '.header-overflow-toggle', title: 'Help lives behind ?',
+  { sel: '#helpBtn', fallback: '.header-overflow-toggle', title: 'Help, or the ? key',
     body: 'The help card explains every feature and key. Enjoy the office.' },
 ]
 const FALLBACK_STEP = { title: 'Menus up top',
-  body: 'On a small screen, YAML, Insights and the ? help card live behind this menu.' }
+  body: 'On a small screen, YAML, Insights, Settings and Help live behind this menu.' }
 
 let idx = -1, spot = null, card = null, reposition = null
 

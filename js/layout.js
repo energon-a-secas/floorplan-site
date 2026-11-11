@@ -27,8 +27,11 @@ function roomSize(g) {
   const own = g.members.length, kids = childrenOf(g.id).length
   const plaque = g.owns.length ? 1 : 0
   if (kids) return { w: Math.min(COLS, Math.max(6, kids * 4)), h: 7 + (own ? 2 : 0) + plaque }
-  const w = Math.min(10, Math.max(4, Math.ceil(Math.sqrt(Math.max(1, own)) * SEAT_W) + 1))
-  const perRow = Math.max(1, Math.floor((w - 0.4) / SEAT_W))
+  // Someone in exactly two groups may sit on a shared wall (a straddle seat, which keeps a
+  // strip of the room clear: building.css .room--strad-*): one more cell keeps every desk in view.
+  const wall = g.members.some(m => membershipsOf(m.person).length === 2) ? 1 : 0
+  const w = Math.min(10 + wall, Math.max(4, Math.ceil(Math.sqrt(Math.max(1, own)) * SEAT_W) + 1) + wall)
+  const perRow = Math.max(1, Math.floor((w - wall - 0.4) / SEAT_W))
   const rows = Math.max(1, Math.ceil(own / perRow))
   return { w, h: Math.max(4, Math.ceil(1 + rows * SEAT_H + 0.3 + plaque)) }
 }

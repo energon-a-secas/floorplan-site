@@ -502,16 +502,22 @@ kbd { font-family: ui-monospace, Menlo, monospace; font-size: max(.75rem, .85em)
 .menu-wrap { position: relative; }
 .header-menu small { display: block; font-size: 12px; opacity: .7; font-weight: 400; }
 .nav-link--badge { position: relative; }
-/* Settings: an icon in the bar, its word kept for screen readers; the word shows in the phone menu. */
-#settingsBtn .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.header-overflow #settingsBtn .nav-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+/* Settings and Help: words, as every other header control and as in Rama. Between 701px and 1199px the
+   header has no room for them (the Header Kit folds only at 700px), so the bar keeps Settings' icon and
+   Help's ?, the words kept for screen readers. In the phone menu both read as words. */
+#settingsBtn { gap: 6px; }
+.help-q { display: none; }
+@media (min-width: 701px) and (max-width: 1199px) {
+  #settingsBtn .nav-label, #helpBtn .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #helpBtn .help-q { display: inline; }
+}
 .insight-badge {
   margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px;
   display: inline-grid; place-items: center; border-radius: 999px;
   font-size: 12px; font-weight: 800; background: rgba(255,255,255,.22); color: #fff;
 }
 .insight-badge[data-loud="1"] { background: var(--under); color: #000; }
-.insight-badge[data-high="1"] { background: var(--over); color: #fff; }
+.insight-badge[data-high="1"] { background: #be123c; color: #fff; }   /* rose-700: white reads at 6.3:1 (--over gave 3.7:1) */
 
 /* ── Workspace ─────────────────────────────────────────────── */
 main#main { flex: 1; min-height: 0; display: flex; }
@@ -596,8 +602,16 @@ body.yaml-open .workspace { grid-template-columns: var(--roster-w) minmax(0, 1fr
 .tool-group--end, .tool-group:has(+ .tool-group--end) + .tool-group--end { border-left: none; padding-left: 0; }
 .i-chev { flex-shrink: 0; opacity: .8; }
 @media (max-width: 700px) {
-  /* On a phone the groups flow as one list (a group per row left half rows empty); Clear keeps the far end. */
-  .tool-group { display: contents; }
+  /* On a phone the title and every control flow as one list (a group per row left half rows
+     empty), History rides with the title so Undo and Redo stay together on the first row, and
+     the rows sit 6px apart: 44px targets in three rows (four in the Building view), where the
+     toolbar before the grouping took four rows (five). Clear keeps the far end. */
+  .board-toolbar { gap: 6px 8px; padding: 8px var(--space-3); }
+  .toolbar--grouped, .tool-group { display: contents; }
+  body[data-mode="building"] .board-toolbar .only-building { display: contents; }
+  .doc-title { flex: 1 1 120px; min-width: 120px; order: 0; }
+  .toolbar--grouped .tool-group > *, .toolbar--grouped .only-building > * { order: 2; }
+  .toolbar--grouped .tool-group[aria-label="History"] > * { order: 1; }
   .tool-group--end > .btn { margin-left: auto; }
 }
 .scale-field { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--text-muted); }
@@ -720,6 +734,10 @@ body.readonly .pct-bar .pct-num { display: none; }
 .panel-status { font-size: 12px; color: var(--text-muted); padding: 6px 12px 0; line-height: 1.4; }
 .panel-hint { font-size: 12px; color: var(--text-muted); padding: 6px 12px 10px; line-height: 1.5; }
 .panel-hint code { font-family: ui-monospace, Menlo, monospace; }
+.panel-hint a { color: #7dd3fc; text-underline-offset: 2px; }
+.panel-hint a:hover { color: #bae6fd; }
+/* The Floorplan section of the Settings sheet: the closing note stands apart from the buttons. */
+.neo-ws-note.fp-ws-tail { margin-top: 14px; }
 .yaml-text {
   flex: 1; min-height: 160px; margin: 8px 12px 0; padding: 10px; resize: none;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; line-height: 1.5; tab-size: 2;
