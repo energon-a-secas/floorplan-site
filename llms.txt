@@ -162,3 +162,11 @@ YAML (canonical), JSON, Markdown outline, Mermaid (`flowchart TB` with one `subg
 ## Keyboard
 
 Enter/Space picks up a focused person, Enter on a group seats them (Alt+Enter splits), Delete removes a seat, Esc drops or closes, Cmd/Ctrl+Z undoes 40 steps (redo with Shift), `?` opens help (also the Help button in the header), `,` opens Settings. Visit walks a pixel avatar with WASD or the arrows; walls block, doors let you through, and standing next to a desk shows that person's card.
+
+## Your settings and your team (Neorgon Workspace)
+
+Settings (in the header, or the `,` key) holds your time zone, working hours, work days, week start, time format and country. They live in one small cookie on neorgon.com (`neo_me`) that every Neorgon planning tool reads; it never holds a name or an email. Your people and teams live in this browser on the Workspace page, https://neorgon.com/workspace/. Floorplan reads them through a hidden read-only frame (Chrome, Edge, Firefox, Android) or, where browsers keep frames apart (Safari, every iOS browser), through "Load your team", a one-tap round trip to that page. Saving ("Save these people to your workspace") goes through a review on the Workspace page and only on the visitor's click. Nothing is sent to a server. The Workspace page explains what it keeps: https://neorgon.com/workspace/ and https://neorgon.com/privacy/.
+
+- "Use my team in Floorplan" builds a document from your workspace: teams as groups, shares as split seats. A board with anything on it is replaced only after a confirm, and Undo brings it back.
+- Your working hours are the core hours for the overlap Insight, the group sheet and Sim's clock (09:00 to 17:00 until set).
+- People Floorplan made are sent as `floorplan-<id>`; workspace people keep their ids, so a second save adds nobody.
